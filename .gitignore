@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# PyType
+.pytype/
+
+.apigraph/
+openapi_orm/
