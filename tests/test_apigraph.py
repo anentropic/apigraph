@@ -25,10 +25,10 @@ def test_links():
         NodeKey(doc_uri, "/2.0/repositories/{username}/{slug}/pullrequests/{pid}/merge", "post"),
     )
     expected_edges = (
-        (expected_nodes[0], expected_nodes[1], EdgeKey(LinkType.LINK, "200", "userRepositories")),
-        (expected_nodes[1], expected_nodes[2], EdgeKey(LinkType.LINK, "200", "userRepository")),
-        (expected_nodes[2], expected_nodes[3], EdgeKey(LinkType.LINK, "200", "repositoryPullRequests")),
-        (expected_nodes[4], expected_nodes[5], EdgeKey(LinkType.LINK, "200", "pullRequestMerge")),
+        (expected_nodes[0], expected_nodes[1], EdgeKey(LinkType.LINK, "200", None, "userRepositories")),
+        (expected_nodes[1], expected_nodes[2], EdgeKey(LinkType.LINK, "200", None, "userRepository")),
+        (expected_nodes[2], expected_nodes[3], EdgeKey(LinkType.LINK, "200", None, "repositoryPullRequests")),
+        (expected_nodes[4], expected_nodes[5], EdgeKey(LinkType.LINK, "200", None, "pullRequestMerge")),
     )
     assert tuple(node for node in apigraph.graph.nodes) == expected_nodes
     assert tuple(edge for edge in apigraph.graph.edges) == expected_edges

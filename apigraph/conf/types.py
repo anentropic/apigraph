@@ -29,3 +29,4 @@ class Settings(CoerceEnumSettings):
     CACHE_EXPIRE: Optional[float] = None
 
     BACKLINKS_ATTR: str = "x-apigraph-backlinks"
+    LINKS_CHAIN_ID_ATTR: str = "x-apigraph-chain-id"

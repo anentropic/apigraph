@@ -14,6 +14,10 @@ class InvalidLinkError(Exception):
     pass
 
 
+class InvalidBacklinkOperationError(Exception):
+    pass
+
+
 class DuplicateOperationId(Exception):
     pass
 
@@ -72,51 +76,83 @@ class APIGraph:
 
         uris_to_crawl = set()
 
-        def edge_args_for_links(links):
-            for name, link in links.items():
-                operation_id = getattr(link, "operationId", None)
-                operation_ref = getattr(link, "operationRef", None)
+        def edge_args_for_backlink_operations(operations) -> Tuple[NodeKey, str]:
+            for name, operation in operations.items():
+                operation_id = getattr(operation, "operationId", None)
+                operation_ref = getattr(operation, "operationRef", None)
                 if operation_id is not None:
                     path, method = doc_index[operation_id]
+                    doc_uri = start_uri
                 elif operation_ref is not None:
                     url = urlsplit(operation_ref)
                     if url.scheme:
                         doc_uri = urlunsplit(url[:-1] + ("",))
-                        # add bare node, remote doc into queue
-                        # (later we can fill in the operation)
+                        # add remote doc into queue
                         uris_to_crawl.add(doc_uri)
+                    else:
+                        # relative ref
+                        doc_uri = start_uri
+                    # we can assume that operationRef is like: `/paths/{path}/{method}`
+                    _, path, method = Pointer(url.fragment)
+                else:
+                    raise InvalidBacklinkOperationError(operation)
+                yield NodeKey(doc_uri, path, method), name
+
+        def add_backlinks(to_node: NodeKey, backlinks):
+            # NOTE: to/from nodes which are not in graph will be added with no attrs
+            # (such nodes will have attrs filled when we get round to crawling their doc)
+            for chain_id, backlink in backlinks.items():
+                edge_args_gen = edge_args_for_backlink_operations(backlink['operations'])
+                for from_node, name in edge_args_gen:
+                    self.graph.add_edge(
+                        from_node,
+                        to_node,
+                        key=EdgeKey(
+                            link_type=LinkType.BACKLINK,
+                            response_id=None,
+                            chain_id=chain_id,
+                            name=name,
+                        ),
+                        link=backlink,  # doc element
+                    )
+
+        def edge_args_for_links(links) -> Tuple[NodeKey, str, str, object]:
+            for name, link in links.items():
+                operation_id = getattr(link, "operationId", None)
+                operation_ref = getattr(link, "operationRef", None)
+                chain_id = getattr(link, _dc_settings.LINKS_CHAIN_ID_ATTR, None)
+                if operation_id is not None:
+                    path, method = doc_index[operation_id]
+                    doc_uri = start_uri
+                elif operation_ref is not None:
+                    url = urlsplit(operation_ref)
+                    if url.scheme:
+                        doc_uri = urlunsplit(url[:-1] + ("",))
+                        # add remote doc into queue
+                        uris_to_crawl.add(doc_uri)
+                    else:
+                        # relative ref
+                        doc_uri = start_uri
                     # we can assume that operationRef is like: `/paths/{path}/{method}`
                     _, path, method = Pointer(url.fragment)
                 else:
                     raise InvalidLinkError(link)
-                yield (path, method), name, link
+                yield NodeKey(doc_uri, path, method), chain_id, name, link
 
-        def add_backlinks(to_node, backlinks):
-            # NOTE: to/from nodes are not in graph they will be added with no attrs
-            for (path, method), name, link in edge_args_for_links(backlinks):
-                self.graph.add_edge(
-                    NodeKey(start_uri, path, method),
-                    to_node,
-                    key=EdgeKey(
-                        link_type=LinkType.BACKLINK,
-                        response_id=None,
-                        name=name,
-                    ),
-                    link=link,
-                )
-
-        def add_links(from_node, response_id, links):
-            # NOTE: to/from nodes are not in graph they will be added with no attrs
-            for (path, method), name, link in edge_args_for_links(links):
+        def add_links(from_node: NodeKey, response_id: str, links):
+            # NOTE: to/from nodes which are not in graph will be added with no attrs
+            # (such nodes will have attrs filled when we get round to crawling their doc)
+            for to_node, chain_id, name, link in edge_args_for_links(links):
                 self.graph.add_edge(
                     from_node,
-                    NodeKey(start_uri, path, method),
+                    to_node,
                     key=EdgeKey(
                         link_type=LinkType.LINK,
                         response_id=response_id,
+                        chain_id=chain_id,
                         name=name,
                     ),
-                    link=link,
+                    link=link,  # doc element
                 )
 
         for path, path_item in doc.paths.items():
