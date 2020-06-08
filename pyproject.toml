@@ -10,18 +10,20 @@ PyYAML = "^5.3.1"
 toml = "^0.10.1"
 jsonref = "^0.2"
 inject = "^4.2.0"
-httpx = "^0.12.1"
+httpx = "^0.13"
 diskcache = "^4.1.0"
 pydantic = "^1.5.1"
 json-spec = "^0.10.1"
+networkx = "^2.4"
 
 [tool.poetry.dev-dependencies]
-pytest = "^4.6"
+pytest = "^5.4"
 ipython = "^7.13.0"
 ipdb = "^0.13.2"
 flaky = "^3.6.1"
 hypothesis = "^5.10.4"
 mypy = "^0.780"
+pytest-httpx = "^0.4.0"
 
 [build-system]
 requires = ["poetry>=0.12"]

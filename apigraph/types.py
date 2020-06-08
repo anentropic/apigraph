@@ -1,6 +1,5 @@
-from typing import NamedTuple, Optional
-
 from enum import Enum
+from typing import NamedTuple, Optional
 
 
 class LinkType(str, Enum):

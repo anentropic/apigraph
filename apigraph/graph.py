@@ -1,5 +1,5 @@
 from typing import Dict, Tuple
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 import inject
 import networkx as nx
@@ -58,42 +58,52 @@ def get_operation_id_path_index(doc_uri: str, doc: OpenAPI3Document):
 
 
 class APIGraph:
-    # using a multi-graph for now due to possibility of redundant
+    # using a multi-graph because it's possible to have redundant
     # link + backlink i.e. directed edge defined in same direction
-    # from both ends (...or should we consolidate them?)
+    # but from both ends
+    # if they share a chain-id then declarest won't know what to do
+    # TODO: consolidate redundant links
+    # ...not sure there's any sense in trying to merge, we should just
+    # give precedence to one (maybe backlinks?)
     graph: nx.MultiDiGraph
     docs: Dict[str, OpenAPI3Document]
 
     def __init__(self, start_uri: str):
         self.graph = nx.MultiDiGraph()
         self.docs = {}
-        self.build(start_uri)
+        self._build(start_uri)
+        # TODO: maybe the indexes should be in here
 
     @inject.params(_dc_settings='settings')
-    def build(self, start_uri: str, _dc_settings=None):
+    def _build(self, start_uri: str, _dc_settings=None):
         doc = load_doc(start_uri)
         doc_index = get_operation_id_path_index(start_uri, doc)
 
         uris_to_crawl = set()
 
+        def _decode_operation_ref(operation_ref: str) -> Tuple[str, str, str]:
+            url = urlsplit(operation_ref)
+            if url.scheme:
+                doc_uri = urlunsplit(url[:-1] + ("",))
+                # add remote doc into queue
+                uris_to_crawl.add(doc_uri)
+            else:
+                # relative ref
+                doc_uri = start_uri
+            # we can assume that operationRef is like: `/paths/{path}/{method}`
+            _, path, method = Pointer(url.fragment)
+            path = unquote(path)
+            return doc_uri, path, method
+
         def edge_args_for_backlink_operations(operations) -> Tuple[NodeKey, str]:
             for name, operation in operations.items():
-                operation_id = getattr(operation, "operationId", None)
-                operation_ref = getattr(operation, "operationRef", None)
+                operation_id = operation.get("operationId")
+                operation_ref = operation.get("operationRef")
                 if operation_id is not None:
                     path, method = doc_index[operation_id]
                     doc_uri = start_uri
                 elif operation_ref is not None:
-                    url = urlsplit(operation_ref)
-                    if url.scheme:
-                        doc_uri = urlunsplit(url[:-1] + ("",))
-                        # add remote doc into queue
-                        uris_to_crawl.add(doc_uri)
-                    else:
-                        # relative ref
-                        doc_uri = start_uri
-                    # we can assume that operationRef is like: `/paths/{path}/{method}`
-                    _, path, method = Pointer(url.fragment)
+                    doc_uri, path, method = _decode_operation_ref(operation_ref)
                 else:
                     raise InvalidBacklinkOperationError(operation)
                 yield NodeKey(doc_uri, path, method), name
@@ -102,8 +112,11 @@ class APIGraph:
             # NOTE: to/from nodes which are not in graph will be added with no attrs
             # (such nodes will have attrs filled when we get round to crawling their doc)
             for chain_id, backlink in backlinks.items():
-                edge_args_gen = edge_args_for_backlink_operations(backlink['operations'])
-                for from_node, name in edge_args_gen:
+                try:
+                    operations = backlink['operations']
+                except KeyError:
+                    continue
+                for from_node, name in edge_args_for_backlink_operations(operations):
                     self.graph.add_edge(
                         from_node,
                         to_node,
@@ -125,16 +138,7 @@ class APIGraph:
                     path, method = doc_index[operation_id]
                     doc_uri = start_uri
                 elif operation_ref is not None:
-                    url = urlsplit(operation_ref)
-                    if url.scheme:
-                        doc_uri = urlunsplit(url[:-1] + ("",))
-                        # add remote doc into queue
-                        uris_to_crawl.add(doc_uri)
-                    else:
-                        # relative ref
-                        doc_uri = start_uri
-                    # we can assume that operationRef is like: `/paths/{path}/{method}`
-                    _, path, method = Pointer(url.fragment)
+                    doc_uri, path, method = _decode_operation_ref(operation_ref)
                 else:
                     raise InvalidLinkError(link)
                 yield NodeKey(doc_uri, path, method), chain_id, name, link
@@ -188,4 +192,4 @@ class APIGraph:
         uris_to_crawl -= self.docs.keys()
 
         for uri in uris_to_crawl:
-            self.build(uri)
+            self._build(uri)

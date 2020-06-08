@@ -25,7 +25,7 @@ class Settings(CoerceEnumSettings):
         validate_assignment = True
         env_prefix = 'APIGRAPH_'
 
-    CACHE_DIR: Optional[str] = ".apigraph"  # TODO
+    CACHE_DIR: Optional[str] = ".apigraph"  # uses tmp if None, relative to exec dir
     CACHE_EXPIRE: Optional[float] = None
 
     BACKLINKS_ATTR: str = "x-apigraph-backlinks"
