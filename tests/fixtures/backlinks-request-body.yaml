@@ -28,12 +28,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
-          links:
-            Add Pet:
-              operationId: addPet
-              x-requestBodyParameters:
-                /owner: $response.body#/username
-              x-apigraph-chain-id: default
   /pets:
     post:
       description: Creates a new pet in the store. Duplicates are allowed
@@ -58,6 +52,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+      x-apigraph-backlinks:
+        default:
+          operations:
+            New User:
+              operationId: addUser
+              response: "201"
+          requestBodyParameters:
+            /owner:
+              from: New User
+              select: $response.body#/username
 components:
   schemas:
     User:

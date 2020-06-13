@@ -64,6 +64,7 @@ def get_operation_id_path_index(doc_uri: str, doc: OpenAPI3Document):
 
 
 # TODO: pre-validate params `from`, can pre-filter too
+# also validate that `default` chain id exists
 def _backlink_params_for_operation(
     operation_name: str, parameters: BacklinkRequestBodyParams
 ) -> RequestBodyParams:
