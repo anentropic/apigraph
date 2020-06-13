@@ -15,8 +15,7 @@ pytest:
 	py.test -v -s tests/
 
 pytest-pdb:
-	# 
-	py.test -v -s --pdb --pdbcls=IPython.terminal.debugger:TerminalPdb tests/
+	py.test -vv -s --pdb --pdbcls=IPython.terminal.debugger:TerminalPdb tests/
 
 test:
 	$(MAKE) typecheck

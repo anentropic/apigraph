@@ -3,7 +3,7 @@ info:
   title: Link Example
   version: 1.0.0
 paths: 
-  /2.0/users/{username}: 
+  /2.0/users/{{username}}: 
     get: 
       operationId: getUserByName
       parameters: 
@@ -19,10 +19,18 @@ paths:
             application/json:
               schema: 
                 $ref: '#/components/schemas/user'
-          links:
-            userRepositories:
-              $ref: '#/components/links/UserRepositories'
-  /2.0/repositories/{username}:
+      x-apigraph-backlinks:
+        default:
+          operations:
+            Create User:
+              # NOTE: {fixture_uri} must be substituted before parsing!
+              operationRef: {fixture_uri}#/paths/~12.0~1users/post
+              response: "201"
+          parameters:
+            username:
+              from: Create User
+              select: $response.body#/username
+  /2.0/repositories/{{username}}:
     get:
       operationId: getRepositoriesByOwner
       parameters:
@@ -31,6 +39,16 @@ paths:
           required: true
           schema:
             type: string
+      x-apigraph-backlinks:
+        default:
+          operations:
+            Get User by Username:
+              operationId: getUserByName
+              response: "200"
+          parameters:
+            username:
+              from: Get User by Username
+              select: $response.body#/username
       responses:
         '200':
           description: repositories owned by the supplied user
@@ -41,14 +59,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/repository'
 components:
-  links:
-    UserRepositories:
-      # returns array of '#/components/schemas/repository'
-      operationId: getRepositoriesByOwner
-      description: Get list of repositories
-      parameters:
-        username: $response.body#/username
-      x-apigraph-chain-id: default
   schemas: 
     user: 
       type: object

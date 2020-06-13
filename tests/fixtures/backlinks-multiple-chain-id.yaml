@@ -3,6 +3,22 @@ info:
   title: Link Example
   version: 1.0.0
 paths: 
+  /1.0/users/{username}: 
+    get: 
+      operationId: getUserByNamev1
+      parameters: 
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+      responses: 
+        '200':
+          description: The User
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/user'
   /2.0/users/{username}: 
     get: 
       operationId: getUserByName
@@ -19,9 +35,6 @@ paths:
             application/json:
               schema: 
                 $ref: '#/components/schemas/user'
-          links:
-            userRepositories:
-              $ref: '#/components/links/UserRepositories'
   /2.0/repositories/{username}:
     get:
       operationId: getRepositoriesByOwner
@@ -31,6 +44,25 @@ paths:
           required: true
           schema:
             type: string
+      x-apigraph-backlinks:
+        default:
+          operations:
+            Get User by Username:
+              operationId: getUserByName
+              response: "200"
+          parameters:
+            username:
+              from: Get User by Username
+              select: $response.body#/username
+        v1:
+          operations:
+            Get User by Username v1:
+              operationId: getUserByNamev1
+              response: "200"
+          parameters:
+            username:
+              from: Get User by Username v1
+              select: $response.body#/username
       responses:
         '200':
           description: repositories owned by the supplied user
@@ -41,14 +73,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/repository'
 components:
-  links:
-    UserRepositories:
-      # returns array of '#/components/schemas/repository'
-      operationId: getRepositoriesByOwner
-      description: Get list of repositories
-      parameters:
-        username: $response.body#/username
-      x-apigraph-chain-id: default
   schemas: 
     user: 
       type: object

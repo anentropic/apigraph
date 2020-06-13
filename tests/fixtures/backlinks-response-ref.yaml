@@ -19,9 +19,6 @@ paths:
             application/json:
               schema: 
                 $ref: '#/components/schemas/user'
-          links:
-            userRepositories:
-              $ref: '#/components/links/UserRepositories'
   /2.0/repositories/{username}:
     get:
       operationId: getRepositoriesByOwner
@@ -31,6 +28,15 @@ paths:
           required: true
           schema:
             type: string
+      x-apigraph-backlinks:
+        default:
+          operations:
+            Get User by Username:
+              responseRef: '#/paths/~12.0~1users~1%7Busername%7D/get/responses/200'
+          parameters:
+            username:
+              from: Get User by Username
+              select: $response.body#/username
       responses:
         '200':
           description: repositories owned by the supplied user
@@ -41,14 +47,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/repository'
 components:
-  links:
-    UserRepositories:
-      # returns array of '#/components/schemas/repository'
-      operationId: getRepositoriesByOwner
-      description: Get list of repositories
-      parameters:
-        username: $response.body#/username
-      x-apigraph-chain-id: default
   schemas: 
     user: 
       type: object

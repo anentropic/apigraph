@@ -1,5 +1,13 @@
-from enum import Enum
-from typing import NamedTuple, Optional
+from enum import auto, Enum
+from typing import Any, Dict, NamedTuple, Union
+from typing_extensions import Final, TypedDict
+
+
+class NotSet(Enum):
+    NOT_SET = auto()
+
+
+NOT_SET: Final = NotSet.NOT_SET
 
 
 class LinkType(str, Enum):
@@ -13,8 +21,26 @@ class NodeKey(NamedTuple):
     method: str
 
 
-class EdgeKey(NamedTuple):
+JSONPointerStr = str
+RuntimeExprStr = str
+
+BacklinkParameter = TypedDict(
+    "BacklinkParameter",
+    {
+        "from": JSONPointerStr,
+        "select": RuntimeExprStr,
+    }
+)
+
+LinkParameters = Dict[str, RuntimeExprStr]
+RequestBodyParams = Dict[JSONPointerStr, RuntimeExprStr]
+BacklinkRequestBodyParams = Dict[JSONPointerStr, BacklinkParameter]
+
+
+class EdgeDetail(NamedTuple):
     link_type: LinkType
-    response_id: Optional[str]  # (forward) Links only: "default" or "100".."599", identifies src of link
-    chain_id: Optional[str]  # apigraph extension feature (to support declarest)
-    name: str
+    name: str  # NOTE: for links `name` identifies the target, for backlinks the source
+    description: str
+    parameters: LinkParameters
+    requestBody: Union[NotSet, RuntimeExprStr, Any]
+    requestBodyParameters: RequestBodyParams

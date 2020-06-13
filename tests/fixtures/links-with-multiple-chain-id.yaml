@@ -2,7 +2,30 @@ openapi: 3.0.0
 info: 
   title: Link Example
   version: 1.0.0
-paths: 
+paths:
+  /1.0/users/{username}: 
+    get: 
+      operationId: getUserByNamev1
+      parameters: 
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+      responses: 
+        '200':
+          description: The User
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/user'
+          links:
+            userRepositories:
+              operationId: getRepositoriesByOwner
+              description: Get list of repositories
+              parameters:
+                username: $response.body#/username
+              x-apigraph-chain-id: v1
   /2.0/users/{username}: 
     get: 
       operationId: getUserByName
@@ -21,7 +44,11 @@ paths:
                 $ref: '#/components/schemas/user'
           links:
             userRepositories:
-              $ref: '#/components/links/UserRepositories'
+              operationId: getRepositoriesByOwner
+              description: Get list of repositories
+              parameters:
+                username: $response.body#/username
+              x-apigraph-chain-id: default
   /2.0/repositories/{username}:
     get:
       operationId: getRepositoriesByOwner
@@ -41,14 +68,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/repository'
 components:
-  links:
-    UserRepositories:
-      # returns array of '#/components/schemas/repository'
-      operationId: getRepositoriesByOwner
-      description: Get list of repositories
-      parameters:
-        username: $response.body#/username
-      x-apigraph-chain-id: default
   schemas: 
     user: 
       type: object
