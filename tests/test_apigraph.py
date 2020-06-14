@@ -437,6 +437,45 @@ def test_backlinks_request_body_params():
     assert [edge for edge in apigraph.graph.edges(data=True, keys=True)] == expected_edges
 
 
+def test_link_backlink_same_chain_consolidation():
+    """
+    last-write wins, in this case the backlink is crawled last and
+    is the detail stored for the edge
+    """
+    doc_uri = fixture_uri("backlinks-with-links-same-chain-id.yaml")
+
+    apigraph = APIGraph(doc_uri)
+    assert apigraph.docs.keys() == {doc_uri}
+
+    expected_nodes = [
+        NodeKey(doc_uri, "/2.0/users/{username}", "get"),
+        NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+    ]
+    expected_edges = [
+        (
+            expected_nodes[0],
+            expected_nodes[1],
+            "chain-id:default",
+            {
+                "response_id": "200",
+                "chain_id": "default",
+                "detail": EdgeDetail(
+                    link_type=LinkType.BACKLINK,
+                    name="Get User by Username",
+                    description="",
+                    parameters={
+                        "username": "$response.body#/username",
+                    },
+                    requestBody=None,
+                    requestBodyParameters={},
+                ),
+            },
+        ),
+    ]
+    assert [node for node in apigraph.graph.nodes] == expected_nodes
+    assert [edge for edge in apigraph.graph.edges(data=True, keys=True)] == expected_edges
+
+
 def test_auth_local_only():
     assert __version__ == '0.1.0'
 

@@ -34,6 +34,7 @@ BacklinkParameter = TypedDict(
 
 LinkParameters = Dict[str, RuntimeExprStr]
 RequestBodyParams = Dict[JSONPointerStr, RuntimeExprStr]
+BacklinkParameters = Dict[str, BacklinkParameter]
 BacklinkRequestBodyParams = Dict[JSONPointerStr, BacklinkParameter]
 
 

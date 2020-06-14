@@ -8,11 +8,12 @@ from openapi_orm.models import OpenAPI3Document, Link, Operation
 
 from apigraph.loader import load_doc
 from apigraph.types import (
+    BacklinkParameters,
     BacklinkRequestBodyParams,
     EdgeDetail,
-    RequestBodyParams,
     LinkType,
     NodeKey,
+    RuntimeExprStr,
 )
 
 
@@ -25,6 +26,10 @@ class InvalidBacklinkOperationError(Exception):
 
 
 class DuplicateOperationId(Exception):
+    pass
+
+
+class InvalidBacklinksDeclaration(Exception):
     pass
 
 
@@ -63,16 +68,49 @@ def get_operation_id_path_index(doc_uri: str, doc: OpenAPI3Document):
     return DOCUMENT_INDEXES[doc_uri]
 
 
-# TODO: pre-validate params `from`, can pre-filter too
-# also validate that `default` chain id exists
-def _backlink_params_for_operation(
-    operation_name: str, parameters: BacklinkRequestBodyParams
-) -> RequestBodyParams:
-    return {
-        key: value['select']
-        for key, value in parameters.items()
-        if value['from'] == operation_name
-    }
+ReturnTuple = Tuple[
+    Dict[str, BacklinkParameters],
+    Dict[str, RuntimeExprStr],
+    Dict[str, BacklinkRequestBodyParams]
+]
+
+
+def backlink_params_by_operation(backlink: Dict) -> ReturnTuple:
+    operations = backlink['operations']
+    parameters = backlink.get("parameters", {})
+    request_body = backlink.get("requestBody")
+    request_body_parameters = backlink.get("requestBodyParameters", {})
+
+    def validate(value):
+        try:
+            from_ = value['from']
+            select_ = value['select']
+        except KeyError:
+            raise InvalidBacklinkOperationError(
+                "Missing from/select object"
+            )
+        if from_ not in operations:
+            raise InvalidBacklinkOperationError(
+                f"Backlinks operation definition not found: '{from_}'"
+            )
+        return from_, select_
+
+    parameters_by_op = {}
+    request_body_by_op = {}
+    request_body_params_by_op = {}
+    for key, value in parameters.items():
+        from_, select_ = validate(value)
+        parameters_by_op.setdefault(from_, {})[key] = select_
+
+    if request_body:
+        from_, select_ = validate(request_body)
+        request_body_by_op[from_] = select_
+
+    for key, value in request_body_parameters.items():
+        from_, select_ = validate(value)
+        request_body_params_by_op.setdefault(from_, {})[key] = select_
+
+    return parameters_by_op, request_body_by_op, request_body_params_by_op
 
 
 class APIGraph:
@@ -80,9 +118,8 @@ class APIGraph:
     # link + backlink i.e. directed edge defined in same direction
     # but from both ends
     # if they share a chain-id then declarest won't know what to do
-    # TODO: consolidate redundant links (fwd+backlink of same chain-id)
-    # ...not sure there's any sense in trying to merge, we should just
-    # give precedence to one (maybe backlinks?)
+    # so we consolidate redundant links (fwd+backlink of same chain-id)
+    # automatically since they will have the same edge key, last write wins
     graph: nx.MultiDiGraph
     docs: Dict[str, OpenAPI3Document]
 
@@ -104,8 +141,8 @@ class APIGraph:
 
         uris_to_crawl = set()
 
-        def _decode_operation_ref(operation_ref: str) -> Tuple[str, str, str]:
-            url = urlsplit(operation_ref)
+        def _pointer_from_ref(ref: str) -> Tuple[Pointer, str]:
+            url = urlsplit(ref)
             if url.scheme:
                 doc_uri = urlunsplit(url[:-1] + ("",))
                 # add remote doc into queue
@@ -113,22 +150,17 @@ class APIGraph:
             else:
                 # relative ref
                 doc_uri = start_uri
+            return Pointer(url.fragment), doc_uri
+
+        def _decode_operation_ref(operation_ref: str) -> Tuple[str, str, str]:
             # we can assume that operationRef is like: `/paths/{path}/{method}`
-            _, path, method = Pointer(url.fragment)
+            (_, path, method), doc_uri = _pointer_from_ref(operation_ref)
             path = unquote(path)
             return doc_uri, path, method
 
         def _decode_response_ref(response_ref: str) -> Tuple[str, str, str, str]:
-            url = urlsplit(response_ref)
-            if url.scheme:
-                doc_uri = urlunsplit(url[:-1] + ("",))
-                # add remote doc into queue
-                uris_to_crawl.add(doc_uri)
-            else:
-                # relative ref
-                doc_uri = start_uri
             # we can assume that responseRef is like: `/paths/{path}/{method}/responses/{response_id}`
-            _, path, method, _, response_id = Pointer(url.fragment)
+            (_, path, method, _, response_id), doc_uri = _pointer_from_ref(response_ref)
             path = unquote(path)
             return doc_uri, path, method, response_id
 
@@ -153,12 +185,12 @@ class APIGraph:
         def add_backlinks(to_node: NodeKey, backlinks):
             # NOTE: to/from nodes which are not in graph will be added with no attrs
             # (such nodes will have attrs filled when we get round to crawling their doc)
+            if "default" not in backlinks:
+                raise InvalidBacklinksDeclaration("Missing `default` key in backlinks")
             for chain_id, backlink in backlinks.items():
                 operations = backlink['operations']
-                parameters = backlink.get("parameters", {})
-                request_body = backlink.get("requestBody", {})
-                request_body_parameters = backlink.get("requestBodyParameters", {})
-                for from_node, name, response_id in edge_args_for_backlink_operations(operations):
+                parameters_by_op, request_body_by_op, request_body_params_by_op = backlink_params_by_operation(backlink)
+                for from_node, op_name, response_id in edge_args_for_backlink_operations(operations):
                     self.graph.add_edge(
                         from_node,
                         to_node,
@@ -167,19 +199,11 @@ class APIGraph:
                         chain_id=chain_id,
                         detail=EdgeDetail(
                             link_type=LinkType.BACKLINK,
-                            name=name,
+                            name=op_name,
                             description=backlink.get('description', ''),
-                            parameters=_backlink_params_for_operation(
-                                name, parameters
-                            ),
-                            requestBody=(
-                                request_body['select']
-                                if request_body and request_body['from'] == name
-                                else None
-                            ),
-                            requestBodyParameters=_backlink_params_for_operation(
-                                name, request_body_parameters
-                            ),
+                            parameters=parameters_by_op.get(op_name, {}),
+                            requestBody=request_body_by_op.get(op_name),
+                            requestBodyParameters=request_body_params_by_op.get(op_name, {}),
                         ),
                     )
 
