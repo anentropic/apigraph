@@ -256,7 +256,14 @@ class APIGraph:
                         path=path,
                         method=method,
                     )
-                    self.graph.add_node(node_key)
+                    self.graph.add_node(
+                        node_key,
+                        security=(
+                            operation.security
+                            if operation.security is not None
+                            else doc.security
+                        )
+                    )
 
                     backlinks = getattr(operation, _dc_settings.BACKLINKS_ATTR, None)
                     if backlinks is not None:

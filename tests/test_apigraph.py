@@ -4,7 +4,6 @@ from typing import Dict
 import inject
 import pytest
 
-from apigraph import __version__
 from apigraph.graph import APIGraph
 from apigraph.types import EdgeDetail, LinkType, NodeKey
 
@@ -38,7 +37,6 @@ def test_links(fixture, chain_id):
     links-local-ref.yaml uses a relative (local) `operationRef`
 
     NOTE: these links all use `parameters` and not `requestBody`
-    TODO: multiple chain-ids
     """
     doc_uri = fixture_uri(fixture)
 
@@ -476,21 +474,61 @@ def test_link_backlink_same_chain_consolidation():
     assert [edge for edge in apigraph.graph.edges(data=True, keys=True)] == expected_edges
 
 
-def test_auth_local_only():
-    assert __version__ == '0.1.0'
+def test_security_resolution():
+    """
+    There are four possible cases:
+    1. operation inherits global security options from OpenAPI element
+    2. operation overrides with [] to remove all security requirements
+    3. operation references a scheme from components that's not in global
+    4. operation overrides with a subset of a global
+    (there'd also be a 5th option combining 3+4, we'll assume supported due to
+    implementation)
+    """
+    doc_uri = fixture_uri("security.yaml")
 
+    apigraph = APIGraph(doc_uri)
+    assert apigraph.docs.keys() == {doc_uri}
 
-def test_auth_global_only():
-    assert __version__ == '0.1.0'
+    assert apigraph.docs[doc_uri].security == [
+        {"httpBearer": []}, {"oAuth2Password": ["read"]}
+    ]
+    assert (
+        apigraph
+        .docs[doc_uri]
+        .paths["/2.0/users/{username}"]
+        .get
+        .security
+    ) is None  # no override defined on operation
 
-
-def test_auth_local_override_with_different():
-    assert __version__ == '0.1.0'
-
-
-def test_auth_local_override_with_none():
-    assert __version__ == '0.1.0'
-
-
-def test_auth_local_override_narrowing():
-    assert __version__ == '0.1.0'
+    # sorted
+    expected_nodes = [
+        (
+            NodeKey(doc_uri, "/1.0/users/{username}", "get"),
+            {
+                # override: only httpBearer accepted
+                "security": [{"httpBearer": []}],
+            },
+        ),
+        (
+            NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+            {
+                # override: only apiKey accepted
+                "security": [{"apiKey": []}],
+            },
+        ),
+        (
+            NodeKey(doc_uri, "/2.0/users", "post"),
+            {
+                # override: no security required
+                "security": [],
+            },
+        ),
+        (
+            NodeKey(doc_uri, "/2.0/users/{username}", "get"),
+            {
+                # no security override, either httpBearer or oAuth2Password accepted
+                "security": [{"httpBearer": []}, {"oAuth2Password": ["read"]}],
+            },
+        ),
+    ]
+    assert sorted([node for node in apigraph.graph.nodes(data=True)]) == expected_nodes
