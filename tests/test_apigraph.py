@@ -9,7 +9,7 @@ from apigraph.types import EdgeDetail, LinkType, NodeKey
 
 
 @pytest.fixture(scope="session", autouse=True)
-@inject.params(_dc_cache='cache')
+@inject.params(_dc_cache="cache")
 def clear_cache(_dc_cache=None):
     _dc_cache.clear()
 
@@ -25,11 +25,14 @@ def str_doc_with_substitutions(rel_path: str, substitutions: Dict[str, str]) -> 
     return content.format(**substitutions)
 
 
-@pytest.mark.parametrize("fixture,chain_id", [
-    ("links.yaml", None),
-    ("links-with-chain-id.yaml", "default"),
-    ("links-local-ref.yaml", None),
-])
+@pytest.mark.parametrize(
+    "fixture,chain_id",
+    [
+        ("links.yaml", None),
+        ("links-with-chain-id.yaml", "default"),
+        ("links-local-ref.yaml", None),
+    ],
+)
 def test_links(fixture, chain_id):
     """
     NOTE: these fixtures use within-doc $refs, so that is tested too
@@ -63,9 +66,7 @@ def test_links(fixture, chain_id):
                     link_type=LinkType.LINK,
                     name="userRepositories",
                     description="Get list of repositories",
-                    parameters={
-                        "username": "$response.body#/username",
-                    },
+                    parameters={"username": "$response.body#/username"},
                     requestBody=None,
                     requestBodyParameters={},
                 ),
@@ -73,7 +74,9 @@ def test_links(fixture, chain_id):
         ),
     ]
     assert [node for node in apigraph.graph.nodes] == expected_nodes
-    assert [edge for edge in apigraph.graph.edges(data=True, keys=True)] == expected_edges
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
 
 
 def test_cross_doc_links(httpx_mock):
@@ -86,8 +89,7 @@ def test_cross_doc_links(httpx_mock):
     other_doc_uri = fixture_uri("links.yaml")
 
     raw_doc = str_doc_with_substitutions(
-        "tests/fixtures/cross-doc-links.yaml",
-        {"fixture_uri": other_doc_uri},
+        "tests/fixtures/cross-doc-links.yaml", {"fixture_uri": other_doc_uri},
     )
     httpx_mock.add_response(url=doc_uri, data=raw_doc)
 
@@ -111,9 +113,7 @@ def test_cross_doc_links(httpx_mock):
                     link_type=LinkType.LINK,
                     name="userByUsername",
                     description="",
-                    parameters={
-                        "username": "$response.body#/username",
-                    },
+                    parameters={"username": "$response.body#/username"},
                     requestBody=None,
                     requestBodyParameters={},
                 ),
@@ -130,9 +130,7 @@ def test_cross_doc_links(httpx_mock):
                     link_type=LinkType.LINK,
                     name="userRepositories",
                     description="Get list of repositories",
-                    parameters={
-                        "username": "$response.body#/username",
-                    },
+                    parameters={"username": "$response.body#/username"},
                     requestBody=None,
                     requestBodyParameters={},
                 ),
@@ -140,7 +138,9 @@ def test_cross_doc_links(httpx_mock):
         ),
     ]
     assert [node for node in apigraph.graph.nodes] == expected_nodes
-    assert [edge for edge in apigraph.graph.edges(data=True, keys=True)] == expected_edges
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
 
 
 def test_links_multiple_chains(httpx_mock):
@@ -167,9 +167,7 @@ def test_links_multiple_chains(httpx_mock):
                     link_type=LinkType.LINK,
                     name="userRepositories",
                     description="Get list of repositories",
-                    parameters={
-                        "username": "$response.body#/username",
-                    },
+                    parameters={"username": "$response.body#/username"},
                     requestBody=None,
                     requestBodyParameters={},
                 ),
@@ -186,9 +184,7 @@ def test_links_multiple_chains(httpx_mock):
                     link_type=LinkType.LINK,
                     name="userRepositories",
                     description="Get list of repositories",
-                    parameters={
-                        "username": "$response.body#/username",
-                    },
+                    parameters={"username": "$response.body#/username"},
                     requestBody=None,
                     requestBodyParameters={},
                 ),
@@ -196,7 +192,9 @@ def test_links_multiple_chains(httpx_mock):
         ),
     ]
     assert sorted([node for node in apigraph.graph.nodes]) == expected_nodes
-    assert [edge for edge in apigraph.graph.edges(data=True, keys=True)] == expected_edges
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
 
 
 def test_links_request_body_params(httpx_mock):
@@ -223,22 +221,25 @@ def test_links_request_body_params(httpx_mock):
                     description="",
                     parameters={},
                     requestBody=None,
-                    requestBodyParameters={
-                        "/owner": "$response.body#/username",
-                    },
+                    requestBodyParameters={"/owner": "$response.body#/username"},
                 ),
             },
         ),
     ]
     assert [node for node in apigraph.graph.nodes] == expected_nodes
-    assert [edge for edge in apigraph.graph.edges(data=True, keys=True)] == expected_edges
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
 
 
-@pytest.mark.parametrize("fixture,chain_id", [
-    ("backlinks.yaml", "default"),
-    ("backlinks-local-ref.yaml", "default"),
-    ("backlinks-response-ref.yaml", "default"),
-])
+@pytest.mark.parametrize(
+    "fixture,chain_id",
+    [
+        ("backlinks.yaml", "default"),
+        ("backlinks-local-ref.yaml", "default"),
+        ("backlinks-response-ref.yaml", "default"),
+    ],
+)
 def test_backlinks(fixture, chain_id):
     """
     NOTE: these links all use `parameters` and not `requestBody`
@@ -264,9 +265,7 @@ def test_backlinks(fixture, chain_id):
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username",
                     description="",
-                    parameters={
-                        "username": "$response.body#/username",
-                    },
+                    parameters={"username": "$response.body#/username"},
                     requestBody=None,
                     requestBodyParameters={},
                 ),
@@ -274,7 +273,9 @@ def test_backlinks(fixture, chain_id):
         ),
     ]
     assert [node for node in apigraph.graph.nodes] == expected_nodes
-    assert [edge for edge in apigraph.graph.edges(data=True, keys=True)] == expected_edges
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
 
 
 def test_cross_doc_backlinks(httpx_mock):
@@ -287,8 +288,7 @@ def test_cross_doc_backlinks(httpx_mock):
     other_doc_uri = fixture_uri("cross-doc-backlinks-target.yaml")
 
     raw_doc = str_doc_with_substitutions(
-        "tests/fixtures/cross-doc-backlinks.yaml",
-        {"fixture_uri": other_doc_uri},
+        "tests/fixtures/cross-doc-backlinks.yaml", {"fixture_uri": other_doc_uri},
     )
     httpx_mock.add_response(url=doc_uri, data=raw_doc)
 
@@ -313,9 +313,7 @@ def test_cross_doc_backlinks(httpx_mock):
                     link_type=LinkType.BACKLINK,
                     name="Create User",
                     description="",
-                    parameters={
-                        "username": "$response.body#/username",
-                    },
+                    parameters={"username": "$response.body#/username"},
                     requestBody=None,
                     requestBodyParameters={},
                 ),
@@ -332,9 +330,7 @@ def test_cross_doc_backlinks(httpx_mock):
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username",
                     description="",
-                    parameters={
-                        "username": "$response.body#/username",
-                    },
+                    parameters={"username": "$response.body#/username"},
                     requestBody=None,
                     requestBodyParameters={},
                 ),
@@ -342,7 +338,10 @@ def test_cross_doc_backlinks(httpx_mock):
         ),
     ]
     assert sorted([node for node in apigraph.graph.nodes]) == expected_nodes
-    assert sorted([edge for edge in apigraph.graph.edges(data=True, keys=True)]) == expected_edges
+    assert (
+        sorted([edge for edge in apigraph.graph.edges(data=True, keys=True)])
+        == expected_edges
+    )
 
 
 def test_backlinks_multiple_chains():
@@ -368,9 +367,7 @@ def test_backlinks_multiple_chains():
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username v1",
                     description="",
-                    parameters={
-                        "username": "$response.body#/username",
-                    },
+                    parameters={"username": "$response.body#/username"},
                     requestBody=None,
                     requestBodyParameters={},
                 ),
@@ -387,9 +384,7 @@ def test_backlinks_multiple_chains():
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username",
                     description="",
-                    parameters={
-                        "username": "$response.body#/username",
-                    },
+                    parameters={"username": "$response.body#/username"},
                     requestBody=None,
                     requestBodyParameters={},
                 ),
@@ -397,7 +392,9 @@ def test_backlinks_multiple_chains():
         ),
     ]
     assert [node for node in apigraph.graph.nodes] == expected_nodes
-    assert [edge for edge in apigraph.graph.edges(data=True, keys=True)] == expected_edges
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
 
 
 def test_backlinks_request_body_params():
@@ -424,15 +421,15 @@ def test_backlinks_request_body_params():
                     description="",
                     parameters={},
                     requestBody=None,
-                    requestBodyParameters={
-                        "/owner": "$response.body#/username",
-                    },
+                    requestBodyParameters={"/owner": "$response.body#/username"},
                 ),
             },
         ),
     ]
     assert [node for node in apigraph.graph.nodes] == expected_nodes
-    assert [edge for edge in apigraph.graph.edges(data=True, keys=True)] == expected_edges
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
 
 
 def test_link_backlink_same_chain_consolidation():
@@ -461,9 +458,7 @@ def test_link_backlink_same_chain_consolidation():
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username",
                     description="",
-                    parameters={
-                        "username": "$response.body#/username",
-                    },
+                    parameters={"username": "$response.body#/username"},
                     requestBody=None,
                     requestBodyParameters={},
                 ),
@@ -471,7 +466,9 @@ def test_link_backlink_same_chain_consolidation():
         ),
     ]
     assert [node for node in apigraph.graph.nodes] == expected_nodes
-    assert [edge for edge in apigraph.graph.edges(data=True, keys=True)] == expected_edges
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
 
 
 def test_security_resolution():
@@ -490,14 +487,11 @@ def test_security_resolution():
     assert apigraph.docs.keys() == {doc_uri}
 
     assert apigraph.docs[doc_uri].security == [
-        {"httpBearer": []}, {"oAuth2Password": ["read"]}
+        {"httpBearer": []},
+        {"oAuth2Password": ["read"]},
     ]
     assert (
-        apigraph
-        .docs[doc_uri]
-        .paths["/2.0/users/{username}"]
-        .get
-        .security
+        apigraph.docs[doc_uri].paths["/2.0/users/{username}"].get.security
     ) is None  # no override defined on operation
 
     # sorted

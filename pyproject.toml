@@ -24,6 +24,14 @@ flaky = "^3.6.1"
 hypothesis = "^5.10.4"
 mypy = "^0.780"
 pytest-httpx = "^0.4.0"
+black = "^19.10b0"
+isort = "^4.3.21"
+
+[tool.black]
+verbose = true
+skip-string-normalization = false
+safe = true
+# NB: exclude does not work here when combined with pre-commit.
 
 [build-system]
 requires = ["poetry>=0.12"]

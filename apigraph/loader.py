@@ -8,11 +8,9 @@ from openapi_orm.loader import JSONOrYAMLRefLoader
 from openapi_orm.models import OpenAPI3Document
 
 
-@inject.params(loader='jsonref_loader')
+@inject.params(loader="jsonref_loader")
 def load_doc(
-    location: Union[str, Path],
-    loader=None,
-    load_on_repr: bool = False,
+    location: Union[str, Path], loader=None, load_on_repr: bool = False,
 ) -> OpenAPI3Document:
     """
     Load OpenAPI spec (as JSON or YAML) and use jsonref to replace
@@ -37,12 +35,13 @@ class DiskCachedJSONOrYAMLRefLoader(JSONOrYAMLRefLoader):
     - uses diskcache as its `store`
     - can load both json and yaml docs
     """
-    @inject.params(_dc_cache='cache')
+
+    @inject.params(_dc_cache="cache")
     def __init__(self, store=(), cache_results: bool = True, _dc_cache=None):
         self.store = _dc_cache
         self.cache_results = cache_results
 
-    @inject.params(_dc_settings='settings')
+    @inject.params(_dc_settings="settings")
     def __call__(self, uri: str, _dc_settings, **kwargs):
         """
         Return the loaded JSON referred to by `uri`
@@ -55,7 +54,5 @@ class DiskCachedJSONOrYAMLRefLoader(JSONOrYAMLRefLoader):
         else:
             result = self.get_remote_json(uri, **kwargs)
             if self.cache_results:
-                self.store.set(
-                    key=uri, value=result, expire=_dc_settings.CACHE_EXPIRE
-                )
+                self.store.set(key=uri, value=result, expire=_dc_settings.CACHE_EXPIRE)
             return result

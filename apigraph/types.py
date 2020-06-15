@@ -1,5 +1,6 @@
-from enum import auto, Enum
-from typing import Any, Dict, NamedTuple, Union
+from enum import Enum, auto
+from typing import Any, Dict, NamedTuple, Tuple, Union
+
 from typing_extensions import Final, TypedDict
 
 
@@ -8,6 +9,21 @@ class NotSet(Enum):
 
 
 NOT_SET: Final = NotSet.NOT_SET
+
+
+OperationIdPathIndex = Dict[str, Tuple[str, str]]
+
+
+HTTP_METHODS: Final = {
+    "get",
+    "put",
+    "post",
+    "delete",
+    "options",
+    "head",
+    "patch",
+    "trace",
+}
 
 
 class LinkType(str, Enum):
@@ -25,11 +41,7 @@ JSONPointerStr = str
 RuntimeExprStr = str
 
 BacklinkParameter = TypedDict(
-    "BacklinkParameter",
-    {
-        "from": JSONPointerStr,
-        "select": RuntimeExprStr,
-    }
+    "BacklinkParameter", {"from": JSONPointerStr, "select": RuntimeExprStr}
 )
 
 LinkParameters = Dict[str, RuntimeExprStr]
