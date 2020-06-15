@@ -35,8 +35,14 @@ class InvalidBacklinksDeclaration(Exception):
     pass
 
 
-def _build_operation_id_path_index(doc: OpenAPI3Document):
-    index = {}
+def _build_operation_id_path_index(doc: OpenAPI3Document) -> OperationIdPathIndex:
+    """
+    OpenAPI spec allows to refer to an Operation by its name, using the
+    `operationId` attribute (in links etc). To ease fetching an
+    operation by its name we build and index of id -> (path, method)
+    It's then trivial to fetch an Operation from doc by (path, method).
+    """
+    index: OperationIdPathIndex = {}
     for path, path_item in doc.paths.items():
         for method in HTTP_METHODS:
             operation = getattr(path_item, method)
@@ -55,7 +61,7 @@ ReturnTuple = Tuple[
 ]
 
 
-def backlink_params_by_operation(backlink: Dict) -> ReturnTuple:
+def _backlink_params_by_operation(backlink: Dict) -> ReturnTuple:
     operations = backlink["operations"]
     parameters = backlink.get("parameters", {})
     request_body = backlink.get("requestBody")
@@ -101,30 +107,51 @@ class APIGraph:
     graph: nx.MultiDiGraph
     docs: Dict[str, OpenAPI3Document]
     _indexes: Dict[str, OperationIdPathIndex]
+    _chains: Dict[str, nx.DiGraph]
 
     def __init__(self, start_uri: str):
         self.graph = nx.MultiDiGraph()
         self.docs = {}
         self._indexes = {}
+        self._chains = {}
         self._build(start_uri)
-
-    def get_operation_id_path_index(self, doc_uri: str, doc: OpenAPI3Document):
-        if doc_uri not in self._indexes:
-            self._indexes[doc_uri] = _build_operation_id_path_index(doc)
-        return self._indexes[doc_uri]
+        self.graph = nx.freeze(self.graph)
 
     def get_operation(self, node_key: NodeKey) -> Operation:
+        """
+        Get operation element specified by `node_key` from relevant api doc.
+        """
         doc = self.docs[node_key.doc_uri]
         path = doc.paths[node_key.path]
         return getattr(path, node_key.method)
 
-    def get_dependencies(self, node_key: NodeKey, chain_id: str):
-        pass
+    def get_dependencies(self, node_key: NodeKey, chain_id: str) -> nx.DiGraph:
+        """
+        Get a subgraph view containing ancestors of `node_key` which
+        are related via edges having this `chain_id`.
+        Includes the source `node_key` itself.
+        """
+        if chain_id not in self._chains:
+            chain_view = nx.subgraph_view(
+                self.graph,
+                filter_edge=lambda u, v, _: f"chain-id:{chain_id}" in self.graph[u][v],
+            )
+            self._chains[chain_id] = nx.freeze(nx.DiGraph(chain_view))
+        chain = self._chains[chain_id]
+        dependencies = nx.ancestors(chain, node_key) | {node_key}
+        return chain.subgraph(dependencies)
+
+    def _get_operation_id_path_index(
+        self, doc_uri: str, doc: OpenAPI3Document
+    ) -> OperationIdPathIndex:
+        if doc_uri not in self._indexes:
+            self._indexes[doc_uri] = _build_operation_id_path_index(doc)
+        return self._indexes[doc_uri]
 
     @inject.params(_dc_settings="settings")
     def _build(self, start_uri: str, _dc_settings=None):
         doc = load_doc(start_uri)
-        doc_index = self.get_operation_id_path_index(start_uri, doc)
+        doc_index = self._get_operation_id_path_index(start_uri, doc)
 
         uris_to_crawl = set()
 
@@ -184,7 +211,7 @@ class APIGraph:
                     parameters_by_op,
                     request_body_by_op,
                     request_body_params_by_op,
-                ) = backlink_params_by_operation(backlink)
+                ) = _backlink_params_by_operation(backlink)
                 for (
                     from_node,
                     op_name,

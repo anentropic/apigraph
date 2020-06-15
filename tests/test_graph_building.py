@@ -1,28 +1,9 @@
-from pathlib import Path
-from typing import Dict
-
-import inject
 import pytest
 
 from apigraph.graph import APIGraph
 from apigraph.types import EdgeDetail, LinkType, NodeKey
 
-
-@pytest.fixture(scope="session", autouse=True)
-@inject.params(_dc_cache="cache")
-def clear_cache(_dc_cache=None):
-    _dc_cache.clear()
-
-
-def fixture_uri(rel_path: str) -> str:
-    path = Path(__file__).parent / Path("fixtures") / Path(rel_path)
-    return f"file://{path}"
-
-
-def str_doc_with_substitutions(rel_path: str, substitutions: Dict[str, str]) -> str:
-    with open(rel_path) as f:
-        content = f.read()
-    return content.format(**substitutions)
+from .helpers import fixture_uri, str_doc_with_substitutions
 
 
 @pytest.mark.parametrize(

@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info: 
-  title: Link Example
+  title: Security Schemas Test API
   version: 1.0.0
 paths: 
   /2.0/users:

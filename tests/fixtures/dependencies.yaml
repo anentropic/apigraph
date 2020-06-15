@@ -1,0 +1,220 @@
+openapi: 3.0.0
+info: 
+  title: Dependency Chain Test API
+  version: 1.0.0
+paths:
+  /invite:
+    post:
+      operationId: Redeem Invite
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - invite_id
+              properties:
+                name:
+                  invite_id: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    token: string
+          links:
+            New User v1:
+              operationId: createUserv1
+              parameters:
+                invite-token: $response.body#/token
+              x-apigraph-chain-id: invited
+            New User:
+              operationId: createUser
+              parameters:
+                invite-token: $response.body#/token
+              x-apigraph-chain-id: invited
+  /1.0/users:
+    post:
+      operationId: createUserv1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - name
+              properties:
+                username:
+                  type: string
+                name:
+                  type: string
+      parameters: 
+        - name: invite-token
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+          links:
+            userByUsername:
+              operationId: getUserByNamev1
+              parameters:
+                username: $response.body#/username
+              x-apigraph-chain-id: v1
+  /2.0/users:
+    post:
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - name
+              properties:
+                username:
+                  type: string
+                name:
+                  type: string
+      parameters: 
+        - name: invite-token
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+          links:
+            userByUsername:
+              operationId: getUserByName
+              parameters:
+                username: $response.body#/username
+              x-apigraph-chain-id: default
+  /1.0/users/{username}: 
+    get: 
+      operationId: getUserByNamev1
+      parameters: 
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+      responses: 
+        '200':
+          description: The User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+          links:
+            userRepositories:
+              operationId: getRepositoriesByOwner
+              description: Get list of repositories
+              parameters:
+                username: $response.body#/username
+              x-apigraph-chain-id: v1
+  /2.0/users/{username}: 
+    get: 
+      operationId: getUserByName
+      parameters: 
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+      responses: 
+        '200':
+          description: The User
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/user'
+          links:
+            userRepositories:
+              operationId: getRepositoriesByOwner
+              description: Get list of repositories
+              parameters:
+                username: $response.body#/username
+              x-apigraph-chain-id: default
+  /2.0/repositories/{username}:
+    get:
+      operationId: getRepositoriesByOwner
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: repositories owned by the supplied user
+          content: 
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/repository'
+          links:
+            userRepository:
+              operationId: getRepository
+              parameters:
+                username: $response.body#/owner/username
+                slug: $response.body#/slug
+              x-apigraph-chain-id: default
+            userRepository v1:
+              operationId: getRepository
+              parameters:
+                username: $response.body#/owner/username
+                slug: $response.body#/slug
+              x-apigraph-chain-id: v1
+  /2.0/repositories/{username}/{slug}: 
+    get: 
+      operationId: getRepository
+      parameters: 
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses: 
+        '200':
+          description: The repository
+          content:
+              application/json: 
+                schema: 
+                  $ref: '#/components/schemas/repository'
+components:
+  schemas: 
+    user: 
+      type: object
+      properties: 
+        username: 
+          type: string
+        uuid: 
+          type: string
+    repository: 
+      type: object
+      properties: 
+        slug: 
+          type: string
+        owner: 
+          $ref: '#/components/schemas/user'

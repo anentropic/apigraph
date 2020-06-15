@@ -8,5 +8,5 @@ Install https://pre-commit.com/ e.g.
 
 ```bash
 brew install pre-commit
+pre-commit install
 ```
-
