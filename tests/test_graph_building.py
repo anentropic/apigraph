@@ -178,8 +178,43 @@ def test_links_multiple_chains(httpx_mock):
     ] == expected_edges
 
 
-def test_links_request_body_params(httpx_mock):
+def test_links_request_body(httpx_mock):
     doc_uri = fixture_uri("links-request-body.yaml")
+
+    apigraph = APIGraph(doc_uri)
+    assert apigraph.docs.keys() == {doc_uri}
+
+    expected_nodes = [
+        NodeKey(doc_uri, "/users", "post"),
+        NodeKey(doc_uri, "/pets/{id}/add-owner", "post"),
+    ]
+    expected_edges = [
+        (
+            expected_nodes[0],
+            expected_nodes[1],
+            "chain-id:default",
+            {
+                "response_id": "201",
+                "chain_id": "default",
+                "detail": EdgeDetail(
+                    link_type=LinkType.LINK,
+                    name="Add Pet",
+                    description="",
+                    parameters={},
+                    requestBody="$response.body",
+                    requestBodyParameters={},
+                ),
+            },
+        ),
+    ]
+    assert [node for node in apigraph.graph.nodes] == expected_nodes
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
+
+
+def test_links_request_body_params(httpx_mock):
+    doc_uri = fixture_uri("links-request-body-params.yaml")
 
     apigraph = APIGraph(doc_uri)
     assert apigraph.docs.keys() == {doc_uri}
@@ -378,8 +413,43 @@ def test_backlinks_multiple_chains():
     ] == expected_edges
 
 
-def test_backlinks_request_body_params():
+def test_backlinks_request_body():
     doc_uri = fixture_uri("backlinks-request-body.yaml")
+
+    apigraph = APIGraph(doc_uri)
+    assert apigraph.docs.keys() == {doc_uri}
+
+    expected_nodes = [
+        NodeKey(doc_uri, "/users", "post"),
+        NodeKey(doc_uri, "/pets/{id}/add-owner", "post"),
+    ]
+    expected_edges = [
+        (
+            expected_nodes[0],
+            expected_nodes[1],
+            "chain-id:default",
+            {
+                "response_id": "201",
+                "chain_id": "default",
+                "detail": EdgeDetail(
+                    link_type=LinkType.BACKLINK,
+                    name="New User",
+                    description="",
+                    parameters={},
+                    requestBody="$response.body",
+                    requestBodyParameters={},
+                ),
+            },
+        ),
+    ]
+    assert [node for node in apigraph.graph.nodes] == expected_nodes
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
+
+
+def test_backlinks_request_body_params():
+    doc_uri = fixture_uri("backlinks-request-body-params.yaml")
 
     apigraph = APIGraph(doc_uri)
     assert apigraph.docs.keys() == {doc_uri}

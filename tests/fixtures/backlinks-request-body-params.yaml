@@ -28,22 +28,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
-          links:
-            Add Pet:
-              operationId: petAddOwner
-              requestBody: $response.body
-              x-apigraph-chain-id: default
-  /pets/{id}/add-owner:
+  /pets:
     post:
-      description: Adds a new owner to existing pet
-      operationId: petAddOwner
+      description: Creates a new pet in the store. Duplicates are allowed
+      operationId: addPet
       requestBody:
-        description: Owner details
+        description: Pet to add to the store
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/User'
+              $ref: '#/components/schemas/NewPet'
       responses:
         '200':
           description: pet response
@@ -57,6 +52,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+      x-apigraph-backlinks:
+        default:
+          operations:
+            New User:
+              operationId: addUser
+              response: "201"
+          requestBodyParameters:
+            /owner:
+              from: New User
+              select: $response.body#/username
 components:
   schemas:
     User:

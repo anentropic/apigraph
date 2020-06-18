@@ -28,17 +28,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
-  /pets:
+  /pets/{id}/add-owner:
     post:
-      description: Creates a new pet in the store. Duplicates are allowed
-      operationId: addPet
+      description: Adds a new owner to existing pet
+      operationId: petAddOwner
       requestBody:
-        description: Pet to add to the store
+        description: Owner details
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NewPet'
+              $ref: '#/components/schemas/User'
       responses:
         '200':
           description: pet response
@@ -58,10 +58,9 @@ paths:
             New User:
               operationId: addUser
               response: "201"
-          requestBodyParameters:
-            /owner:
+          requestBody:
               from: New User
-              select: $response.body#/username
+              select: $response.body
 components:
   schemas:
     User:
