@@ -39,7 +39,7 @@ def _build_operation_id_path_index(doc: OpenAPI3Document) -> OperationIdPathInde
     """
     OpenAPI spec allows to refer to an Operation by its name, using the
     `operationId` attribute (in links etc). To ease fetching an
-    operation by its name we build and index of id -> (path, method)
+    operation by its name we build an index of id -> (path, method)
     It's then trivial to fetch an Operation from doc by (path, method).
     """
     index: OperationIdPathIndex = {}

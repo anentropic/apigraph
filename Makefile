@@ -1,4 +1,4 @@
-.PHONY: pypi, tag, shell, typecheck, pytest, pytest-pdb, test
+.PHONY: pypi, tag, shell, typecheck, pytest, pytest-pdb, test, docs
 
 pypi:
 	poetry publish --build
@@ -20,3 +20,11 @@ pytest-pdb:
 test:
 	$(MAKE) typecheck
 	$(MAKE) pytest
+
+docs:
+	cd docs; make clean
+	cd docs; make html
+
+publish:
+	make docs
+	make pypi
