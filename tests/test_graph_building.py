@@ -524,7 +524,6 @@ def test_link_backlink_same_chain_consolidation():
 # test cyclic dependency between docs (i.e. do we avoid infinite loop?)
 
 
-@pytest.mark.skip
 def test_security_resolution():
     """
     There are four possible cases:
