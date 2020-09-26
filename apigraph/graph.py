@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 from urllib.parse import unquote, urlsplit, urlunsplit
 
 import inject
@@ -12,6 +12,7 @@ from apigraph.types import (
     BacklinkParameters,
     BacklinkRequestBodyParams,
     EdgeDetail,
+    EdgeKey,
     LinkType,
     NodeKey,
     OperationIdPathIndex,
@@ -23,7 +24,7 @@ class InvalidLinkError(Exception):
     pass
 
 
-class InvalidBacklinkOperationError(Exception):
+class InvalidBacklinkError(Exception):
     pass
 
 
@@ -61,42 +62,6 @@ ReturnTuple = Tuple[
 ]
 
 
-def _backlink_params_by_operation(backlink: Dict) -> ReturnTuple:
-    operations = backlink["operations"]
-    parameters = backlink.get("parameters", {})
-    request_body = backlink.get("requestBody")
-    request_body_parameters = backlink.get("requestBodyParameters", {})
-
-    def validate(value):
-        try:
-            from_ = value["from"]
-            select_ = value["select"]
-        except KeyError:
-            raise InvalidBacklinkOperationError("Missing from/select object")
-        if from_ not in operations:
-            raise InvalidBacklinkOperationError(
-                f"Backlinks operation definition not found: '{from_}'"
-            )
-        return from_, select_
-
-    parameters_by_op = {}
-    request_body_by_op = {}
-    request_body_params_by_op = {}
-    for key, value in parameters.items():
-        from_, select_ = validate(value)
-        parameters_by_op.setdefault(from_, {})[key] = select_
-
-    if request_body:
-        from_, select_ = validate(request_body)
-        request_body_by_op[from_] = select_
-
-    for key, value in request_body_parameters.items():
-        from_, select_ = validate(value)
-        request_body_params_by_op.setdefault(from_, {})[key] = select_
-
-    return parameters_by_op, request_body_by_op, request_body_params_by_op
-
-
 class APIGraph:
     # using a multi-graph because it's possible to have redundant
     # link + backlink i.e. directed edge defined in same direction
@@ -125,7 +90,7 @@ class APIGraph:
         path = doc.paths[node_key.path]
         return getattr(path, node_key.method)
 
-    def get_dependencies(self, node_key: NodeKey, chain_id: str) -> nx.DiGraph:
+    def get_prerequisites(self, node_key: NodeKey, chain_id: str) -> nx.DiGraph:
         """
         Get a subgraph view containing ancestors of `node_key` which
         are related via edges having this `chain_id`.
@@ -134,7 +99,7 @@ class APIGraph:
         if chain_id not in self._chains:
             chain_view = nx.subgraph_view(
                 self.graph,
-                filter_edge=lambda u, v, _: f"chain-id:{chain_id}" in self.graph[u][v],
+                filter_edge=lambda _u, _v, edge_key: edge_key[0] == chain_id,
             )
             self._chains[chain_id] = nx.freeze(nx.DiGraph(chain_view))
         chain = self._chains[chain_id]
@@ -178,108 +143,77 @@ class APIGraph:
             path = unquote(path)
             return doc_uri, path, method, response_id
 
-        def edge_args_for_backlink_operations(
-            operations: Dict[str, Dict]
-        ) -> Tuple[NodeKey, str, str]:
-            for name, operation in operations.items():
-                response_ref = operation.get("responseRef")
-                operation_id = operation.get("operationId")
-                operation_ref = operation.get("operationRef")
-                if response_ref is not None:
-                    doc_uri, path, method, response_id = _decode_response_ref(
-                        response_ref
-                    )
-                elif operation_id is not None:
-                    path, method = doc_index[operation_id]
-                    doc_uri = start_uri
-                    response_id = operation["response"]
-                elif operation_ref is not None:
-                    doc_uri, path, method = _decode_operation_ref(operation_ref)
-                    response_id = operation["response"]
-                else:
-                    raise InvalidBacklinkOperationError(operation)
-                yield NodeKey(doc_uri, path, method), name, response_id
+        def edge_args_for_backlink(
+            backlink: Dict[str, Dict]
+        ) -> Tuple[NodeKey, Optional[str], str]:
+            response_ref = backlink.responseRef
+            operation_id = backlink.operationId
+            operation_ref = backlink.operationRef
+            response_id = backlink.response
+            chain_id = backlink.chainId
+            if response_ref is not None:
+                doc_uri, path, method, response_id = _decode_response_ref(response_ref)
+            elif operation_id is not None and response_id is not None:
+                path, method = doc_index[operation_id]
+                doc_uri = start_uri
+            elif operation_ref is not None and response_id is not None:
+                doc_uri, path, method = _decode_operation_ref(operation_ref)
+            else:
+                raise InvalidBacklinkError(backlink)
+            return NodeKey(doc_uri, path, method), chain_id, response_id
 
         def add_backlinks(to_node: NodeKey, backlinks):
             # NOTE: to/from nodes which are not in graph will be added with no attrs
             # (such nodes will have attrs filled when we get round to crawling their doc)
-            if "default" not in backlinks:
-                raise InvalidBacklinksDeclaration("Missing `default` key in backlinks")
-            for chain_id, backlink in backlinks.items():
-                operations = backlink["operations"]
-                (
-                    parameters_by_op,
-                    request_body_by_op,
-                    request_body_params_by_op,
-                ) = _backlink_params_by_operation(backlink)
-                for (
+            for name, backlink in backlinks.items():
+                from_node, chain_id, response_id = edge_args_for_backlink(backlink)
+                self.graph.add_edge(
                     from_node,
-                    op_name,
-                    response_id,
-                ) in edge_args_for_backlink_operations(operations):
-                    self.graph.add_edge(
-                        from_node,
-                        to_node,
-                        key=f"chain-id:{chain_id}",
-                        response_id=response_id,
-                        chain_id=chain_id,
-                        detail=EdgeDetail(
-                            link_type=LinkType.BACKLINK,
-                            name=op_name,
-                            description=backlink.get("description", ""),
-                            parameters=parameters_by_op.get(op_name, {}),
-                            requestBody=request_body_by_op.get(op_name),
-                            requestBodyParameters=request_body_params_by_op.get(
-                                op_name, {}
-                            ),
-                        ),
-                    )
+                    to_node,
+                    key=EdgeKey(chain_id, response_id),
+                    response_id=response_id,
+                    chain_id=chain_id,
+                    detail=EdgeDetail(
+                        link_type=LinkType.BACKLINK,
+                        name=name,
+                        description=backlink.description,
+                        parameters=backlink.parameters,
+                        requestBody=backlink.requestBody,
+                        requestBodyParameters=backlink.requestBodyParameters,
+                    ),
+                )
 
-        def edge_args_for_links(
-            links: Dict[str, Link]
-        ) -> Tuple[NodeKey, str, str, object]:
-            for name, link in links.items():
-                operation_id = getattr(link, "operationId", None)
-                operation_ref = getattr(link, "operationRef", None)
-                # we don't default missing chain-id to "default" because if you
-                # have unmarked links from different responses of same operation
-                # to same operation they would share `chain-id:default` edge key
-                # instead we allow these links to be distinguished by `response`
-                # and if you want to use in a dependency chain you must mark them
-                # up manually
-                chain_id = getattr(link, _dc_settings.LINK_CHAIN_ID_ATTR, None)
-                if operation_id is not None:
-                    path, method = doc_index[operation_id]
-                    doc_uri = start_uri
-                elif operation_ref is not None:
-                    doc_uri, path, method = _decode_operation_ref(operation_ref)
-                else:
-                    raise InvalidLinkError(link)
-                yield NodeKey(doc_uri, path, method), chain_id, name, link
+        def edge_args_for_link(link: Link) -> Tuple[NodeKey, str, Link]:
+            operation_id = link.operationId
+            operation_ref = link.operationRef
+            chain_id = link.chainId
+            if operation_id is not None:
+                path, method = doc_index[operation_id]
+                doc_uri = start_uri
+            elif operation_ref is not None:
+                doc_uri, path, method = _decode_operation_ref(operation_ref)
+            else:
+                raise InvalidLinkError(link)
+            return NodeKey(doc_uri, path, method), chain_id
 
         def add_links(from_node: NodeKey, response_id: str, links):
             # NOTE: to/from nodes which are not in graph will be added with no attrs
             # (such nodes will have attrs filled when we get round to crawling their doc)
-            for to_node, chain_id, name, link in edge_args_for_links(links):
-                if chain_id is not None:
-                    key = f"chain-id:{chain_id}"
-                else:
-                    key = f"response:{response_id}"
+            for name, link in links.items():
+                to_node, chain_id = edge_args_for_link(link)
                 self.graph.add_edge(
                     from_node,
                     to_node,
-                    key=key,
+                    key=EdgeKey(chain_id, response_id),
                     response_id=response_id,
                     chain_id=chain_id,
                     detail=EdgeDetail(
                         link_type=LinkType.LINK,
                         name=name,
-                        description=link.description or "",
-                        parameters=link.parameters or {},
-                        requestBody=link.requestBody or None,
-                        requestBodyParameters=getattr(
-                            link, _dc_settings.LINK_REQUEST_BODY_PARAMS_ATTR, {}
-                        ),
+                        description=link.description,
+                        parameters=link.parameters,
+                        requestBody=link.requestBody,
+                        requestBodyParameters=link.requestBodyParameters,
                     ),
                 )
 
@@ -297,9 +231,7 @@ class APIGraph:
                         ),
                     )
 
-                    backlinks = getattr(operation, _dc_settings.BACKLINKS_ATTR, None)
-                    if backlinks is not None:
-                        add_backlinks(node_key, backlinks)
+                    add_backlinks(node_key, operation.backlinks)
 
                     for response_id, response in operation.responses.items():
                         links = getattr(response, "links", None)
@@ -308,6 +240,7 @@ class APIGraph:
 
         self.docs[start_uri] = doc
 
+        # remove any docs we already crawled
         uris_to_crawl -= self.docs.keys()
 
         for uri in uris_to_crawl:

@@ -53,15 +53,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       x-apigraph-backlinks:
-        default:
-          operations:
-            New User:
-              operationId: addUser
-              response: "201"
+        New User:
+          operationId: addUser
+          response: "201"
           requestBodyParameters:
-            /owner:
-              from: New User
-              select: $response.body#/username
+            /owner: $response.body#/username
 components:
   schemas:
     User:

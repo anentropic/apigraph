@@ -10,7 +10,7 @@ from .helpers import fixture_uri, str_doc_with_substitutions
     "fixture,chain_id",
     [
         ("links.yaml", None),
-        ("links-with-chain-id.yaml", "default"),
+        ("links-with-chain-id.yaml", "v2"),
         ("links-local-ref.yaml", None),
     ],
 )
@@ -31,15 +31,11 @@ def test_links(fixture, chain_id):
         NodeKey(doc_uri, "/2.0/users/{username}", "get"),
         NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
     ]
-    if chain_id:
-        key = f"chain-id:{chain_id}"
-    else:
-        key = "response:{}"
     expected_edges = [
         (
             expected_nodes[0],
             expected_nodes[1],
-            key.format("200"),
+            (chain_id, "200"),
             {
                 "response_id": "200",
                 "chain_id": chain_id,
@@ -86,7 +82,7 @@ def test_cross_doc_links(httpx_mock):
         (
             expected_nodes[0],
             expected_nodes[1],
-            "response:201",
+            (None, "201"),
             {
                 "response_id": "201",
                 "chain_id": None,
@@ -103,7 +99,7 @@ def test_cross_doc_links(httpx_mock):
         (
             expected_nodes[1],
             expected_nodes[2],
-            "response:200",
+            (None, "200"),
             {
                 "response_id": "200",
                 "chain_id": None,
@@ -140,7 +136,7 @@ def test_links_multiple_chains(httpx_mock):
         (
             expected_nodes[0],
             expected_nodes[1],
-            "chain-id:v1",
+            ("v1", "200"),
             {
                 "response_id": "200",
                 "chain_id": "v1",
@@ -157,7 +153,7 @@ def test_links_multiple_chains(httpx_mock):
         (
             expected_nodes[2],
             expected_nodes[1],
-            "chain-id:default",
+            ("default", "200"),
             {
                 "response_id": "200",
                 "chain_id": "default",
@@ -192,10 +188,10 @@ def test_links_request_body(httpx_mock):
         (
             expected_nodes[0],
             expected_nodes[1],
-            "chain-id:default",
+            (None, "201"),
             {
                 "response_id": "201",
-                "chain_id": "default",
+                "chain_id": None,
                 "detail": EdgeDetail(
                     link_type=LinkType.LINK,
                     name="Add Pet",
@@ -227,10 +223,10 @@ def test_links_request_body_params(httpx_mock):
         (
             expected_nodes[0],
             expected_nodes[1],
-            "chain-id:default",
+            (None, "201"),
             {
                 "response_id": "201",
-                "chain_id": "default",
+                "chain_id": None,
                 "detail": EdgeDetail(
                     link_type=LinkType.LINK,
                     name="Add Pet",
@@ -251,9 +247,9 @@ def test_links_request_body_params(httpx_mock):
 @pytest.mark.parametrize(
     "fixture,chain_id",
     [
-        ("backlinks.yaml", "default"),
-        ("backlinks-local-ref.yaml", "default"),
-        ("backlinks-response-ref.yaml", "default"),
+        ("backlinks.yaml", None),
+        ("backlinks-local-ref.yaml", None),
+        ("backlinks-response-ref.yaml", None),
     ],
 )
 def test_backlinks(fixture, chain_id):
@@ -273,7 +269,7 @@ def test_backlinks(fixture, chain_id):
         (
             expected_nodes[0],
             expected_nodes[1],
-            f"chain-id:{chain_id}",
+            (chain_id, "200"),
             {
                 "response_id": "200",
                 "chain_id": chain_id,
@@ -321,10 +317,10 @@ def test_cross_doc_backlinks(httpx_mock):
         (
             expected_nodes[0],
             expected_nodes[2],
-            "chain-id:default",
+            (None, "201"),
             {
                 "response_id": "201",
-                "chain_id": "default",
+                "chain_id": None,
                 "detail": EdgeDetail(
                     link_type=LinkType.BACKLINK,
                     name="Create User",
@@ -338,10 +334,10 @@ def test_cross_doc_backlinks(httpx_mock):
         (
             expected_nodes[2],
             expected_nodes[1],
-            "chain-id:default",
+            (None, "200"),
             {
                 "response_id": "200",
-                "chain_id": "default",
+                "chain_id": None,
                 "detail": EdgeDetail(
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username",
@@ -375,7 +371,7 @@ def test_backlinks_multiple_chains():
         (
             expected_nodes[0],
             expected_nodes[2],
-            "chain-id:v1",
+            ("v1", "200"),
             {
                 "response_id": "200",
                 "chain_id": "v1",
@@ -392,10 +388,10 @@ def test_backlinks_multiple_chains():
         (
             expected_nodes[1],
             expected_nodes[2],
-            "chain-id:default",
+            (None, "200"),
             {
                 "response_id": "200",
-                "chain_id": "default",
+                "chain_id": None,
                 "detail": EdgeDetail(
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username",
@@ -427,10 +423,10 @@ def test_backlinks_request_body():
         (
             expected_nodes[0],
             expected_nodes[1],
-            "chain-id:default",
+            (None, "201"),
             {
                 "response_id": "201",
-                "chain_id": "default",
+                "chain_id": None,
                 "detail": EdgeDetail(
                     link_type=LinkType.BACKLINK,
                     name="New User",
@@ -462,10 +458,10 @@ def test_backlinks_request_body_params():
         (
             expected_nodes[0],
             expected_nodes[1],
-            "chain-id:default",
+            (None, "201"),
             {
                 "response_id": "201",
-                "chain_id": "default",
+                "chain_id": None,
                 "detail": EdgeDetail(
                     link_type=LinkType.BACKLINK,
                     name="New User",
@@ -487,6 +483,8 @@ def test_link_backlink_same_chain_consolidation():
     """
     last-write wins, in this case the backlink is crawled last and
     is the detail stored for the edge
+
+    TODO: backlink always wins
     """
     doc_uri = fixture_uri("backlinks-with-links-same-chain-id.yaml")
 
@@ -501,7 +499,7 @@ def test_link_backlink_same_chain_consolidation():
         (
             expected_nodes[0],
             expected_nodes[1],
-            "chain-id:default",
+            ("default", "200"),
             {
                 "response_id": "200",
                 "chain_id": "default",
@@ -522,6 +520,11 @@ def test_link_backlink_same_chain_consolidation():
     ] == expected_edges
 
 
+# TODO:
+# test cyclic dependency between docs (i.e. do we avoid infinite loop?)
+
+
+@pytest.mark.skip
 def test_security_resolution():
     """
     There are four possible cases:

@@ -25,7 +25,7 @@ paths:
               description: Get list of repositories
               parameters:
                 username: $response.body#/username
-              x-apigraph-chain-id: v1
+              x-apigraph-chainId: v1
   /2.0/users/{username}: 
     get: 
       operationId: getUserByName
@@ -48,7 +48,7 @@ paths:
               description: Get list of repositories
               parameters:
                 username: $response.body#/username
-              x-apigraph-chain-id: default
+              x-apigraph-chainId: default
   /2.0/repositories/{username}:
     get:
       operationId: getRepositoriesByOwner

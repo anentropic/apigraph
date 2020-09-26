@@ -4,7 +4,7 @@ from apigraph.types import EdgeDetail, LinkType, NodeKey
 from .helpers import fixture_uri
 
 
-def test_get_dependencies():
+def test_get_prerequisites():
     """
     The test fixture contains three dependency chains, two of which begin
     at `createUser` and `createUserv1` respectively and both ending at
@@ -22,11 +22,11 @@ def test_get_dependencies():
     apigraph = APIGraph(doc_uri)
     assert apigraph.docs.keys() == {doc_uri}
 
-    default_deps = apigraph.get_dependencies(
+    default_deps = apigraph.get_prerequisites(
         node_key=NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
         chain_id="default",
     )
-    v1_deps = apigraph.get_dependencies(
+    v1_deps = apigraph.get_prerequisites(
         node_key=NodeKey(doc_uri, "/2.0/repositories/{username}", "get"), chain_id="v1",
     )
 

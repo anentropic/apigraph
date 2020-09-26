@@ -30,12 +30,12 @@ paths:
               operationId: createUserv1
               parameters:
                 invite-token: $response.body#/token
-              x-apigraph-chain-id: invited
+              x-apigraph-chainId: invited
             New User:
               operationId: createUser
               parameters:
                 invite-token: $response.body#/token
-              x-apigraph-chain-id: invited
+              x-apigraph-chainId: invited
   /1.0/users:
     post:
       operationId: createUserv1
@@ -69,7 +69,7 @@ paths:
               operationId: getUserByNamev1
               parameters:
                 username: $response.body#/username
-              x-apigraph-chain-id: v1
+              x-apigraph-chainId: v1
   /2.0/users:
     post:
       operationId: createUser
@@ -103,7 +103,7 @@ paths:
               operationId: getUserByName
               parameters:
                 username: $response.body#/username
-              x-apigraph-chain-id: default
+              x-apigraph-chainId: default
   /1.0/users/{username}: 
     get: 
       operationId: getUserByNamev1
@@ -126,7 +126,7 @@ paths:
               description: Get list of repositories
               parameters:
                 username: $response.body#/username
-              x-apigraph-chain-id: v1
+              x-apigraph-chainId: v1
   /2.0/users/{username}: 
     get: 
       operationId: getUserByName
@@ -149,7 +149,7 @@ paths:
               description: Get list of repositories
               parameters:
                 username: $response.body#/username
-              x-apigraph-chain-id: default
+              x-apigraph-chainId: default
   /2.0/repositories/{username}:
     get:
       operationId: getRepositoriesByOwner
@@ -174,13 +174,13 @@ paths:
               parameters:
                 username: $response.body#/owner/username
                 slug: $response.body#/slug
-              x-apigraph-chain-id: default
+              x-apigraph-chainId: default
             userRepository v1:
               operationId: getRepository
               parameters:
                 username: $response.body#/owner/username
                 slug: $response.body#/slug
-              x-apigraph-chain-id: v1
+              x-apigraph-chainId: v1
   /2.0/repositories/{username}/{slug}: 
     get: 
       operationId: getRepository

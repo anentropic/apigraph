@@ -29,15 +29,11 @@ paths:
           schema:
             type: string
       x-apigraph-backlinks:
-        default:
-          operations:
-            Get User by Username:
-              operationId: getUserByName
-              response: "200"
+        Get User by Username:
+          operationId: getUserByName
+          response: "200"
           parameters:
-            username:
-              from: Get User by Username
-              select: $response.body#/username
+            username: $response.body#/username
       responses:
         '200':
           description: repositories owned by the supplied user

@@ -27,5 +27,5 @@ class Settings(CoerceEnumSettings):
     CACHE_EXPIRE: Optional[float] = None
 
     BACKLINKS_ATTR: str = "x-apigraph-backlinks"
-    LINK_CHAIN_ID_ATTR: str = "x-apigraph-chain-id"
-    LINK_REQUEST_BODY_PARAMS_ATTR: str = "x-requestBodyParameters"
+    LINK_CHAIN_ID_ATTR: str = "x-apigraph-chainId"
+    LINK_REQUEST_BODY_PARAMS_ATTR: str = "x-apigraph-requestBodyParameters"

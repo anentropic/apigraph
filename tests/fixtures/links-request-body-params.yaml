@@ -31,9 +31,8 @@ paths:
           links:
             Add Pet:
               operationId: addPet
-              x-requestBodyParameters:
+              x-apigraph-requestBodyParameters:
                 /owner: $response.body#/username
-              x-apigraph-chain-id: default
   /pets:
     post:
       description: Creates a new pet in the store. Duplicates are allowed

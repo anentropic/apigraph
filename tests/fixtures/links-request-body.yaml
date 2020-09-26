@@ -32,7 +32,6 @@ paths:
             Add Pet:
               operationId: petAddOwner
               requestBody: $response.body
-              x-apigraph-chain-id: default
   /pets/{id}/add-owner:
     post:
       description: Adds a new owner to existing pet

@@ -48,7 +48,7 @@ components:
       description: Get list of repositories
       parameters:
         username: $response.body#/username
-      x-apigraph-chain-id: default
+      x-apigraph-chainId: v2
   schemas: 
     user: 
       type: object

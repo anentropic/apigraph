@@ -102,18 +102,25 @@ We then extract the necessary values from these prerequisite operations, for use
 =====================  =================================  ===========
 Field Name             Type                               Description
 =====================  =================================  ===========
-chainId                ``string``                         The chain-id to which this Backlink object belongs. If not present then the Backlink implicitly belongs to the ``default`` chain-id.
+chainId                ``string``                         The chain-id to which this Backlink object belongs. If not present then the Backlink implicitly belongs to the ``null`` chain-id.
 responseRef            ``string``                         A `JSON Reference`_ identifying a specific Response in the target Operation. **One of** ``responseRef`` or ``operationRef`` or ``operationId`` is **REQUIRED**.
 operationRef           ``string``                         A `JSON Reference`_ identifying a specific Operation. **One of** ``responseRef`` or ``operationRef`` or ``operationId`` is **REQUIRED**.
 operationId            ``string``                         Name identifying a specific Operation in the current document. **One of** ``responseRef`` or ``operationRef`` or ``operationId`` is **REQUIRED**.
 response               ``string``                         Name identifying to a specific response in the otherwise specified Operation. **REQUIRED** if either ``operationRef`` or ``operationId`` are used and mutally exclusive of ``responseRef`` field.
 parameters             Map[``string``, {expression}]      A mapping of parameter names (from the backlink's parent operation) to `runtime expressions`_ to extract a value from the upstream Response which is the target of this backlink.
 requestBodyParameters  Map[{JSON Pointer}, {expression}]  A mapping of `JSON Pointers`_ (identifying values in the backlink's parent Operation's request body) to `runtime expressions`_ to extract a value from the upstream Response which is the target of this backlink.
+requestBody            {expression}                       A `runtime expression`_ to extract a value from the upstream Response it and use as the request body of the current Operation.
+description	           ``string``                         A description of the link. `CommonMark syntax`_ MAY be used for rich text representation.
+server	               `Server Object`_                   A server object to be used by the target operation.
 =====================  =================================  ===========
+
+The ``chainId`` field serves the same purpose for backlinks as the `x-apigraph-chainId`_ extension field does for forward-pointing links. **IMPORTANT NOTE:** if there are multiple backlinks from the same Operation and having the same ``chainId`` (which will be ``null`` if not specified) then they are all considered *required prerequisites* to that Operation, when traversing that particular chain with Apigraph.
 
 The ``requestBodyParameters`` field serves the same purpose for backlinks as the `x-apigraph-requestBodyParameters`_ extension field does for forward-pointing links.
 
-The ``chainId`` field serves the same purpose for backlinks as the `x-apigraph-chainId`_ extension field does for forward-pointing links. **IMPORTANT NOTE:** if there are multiple backlinks from the same Operation and having the same ``chainId`` (which will be ``default`` if not specified) then they are all considered *required prerequisites* to that Operation, when traversing that particular chain with Apigraph.
+The ``requestBody`` field serves the same purpose for backlinks as the existing one for `Link Object`_.
+
+``description`` and ``server`` are also as per `Link Object`_.
 
 
 **Complete Example**
@@ -219,7 +226,7 @@ In Apigraph we want to be able to say, for the ``GET /repositories/{username}`` 
 
 This is an extension to the `Link Object`_.
 
-For Apigraph's purposes, if the Link does not have an ``x-apigraph-chainId`` field then it belongs to the ``default`` chain-id.
+For Apigraph's purposes, if the Link does not have an ``x-apigraph-chainId`` field then it belongs to the ``null`` chain-id.
 
 **Fixed Fields**
 
@@ -252,8 +259,10 @@ x-apigraph-chainId  ``string``  The chain-id to which this `Link Object`_ belong
 .. _Link Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#linkObject
 .. _Operation Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#operationObject
 .. _Response Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#responseObject
+.. _Server Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#serverObject
 .. _JSON Pointer: https://tools.ietf.org/html/rfc6901
 .. _JSON Pointers: https://tools.ietf.org/html/rfc6901
 .. _JSON Reference: https://tools.ietf.org/html/draft-pbryan-zyp-json-ref-03
 .. _runtime expression: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#runtimeExpression
 .. _runtime expressions: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#runtimeExpression
+.. _CommonMark syntax: http://spec.commonmark.org/

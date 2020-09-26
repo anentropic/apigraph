@@ -20,16 +20,12 @@ paths:
               schema: 
                 $ref: '#/components/schemas/user'
       x-apigraph-backlinks:
-        default:
-          operations:
-            Create User:
-              # NOTE: {fixture_uri} must be substituted before parsing!
-              operationRef: {fixture_uri}#/paths/~12.0~1users/post
-              response: "201"
+        Create User:
+          # NOTE: {fixture_uri} must be substituted before parsing!
+          operationRef: {fixture_uri}#/paths/~12.0~1users/post
+          response: "201"
           parameters:
-            username:
-              from: Create User
-              select: $response.body#/username
+            username: $response.body#/username
   /2.0/repositories/{{username}}:
     get:
       operationId: getRepositoriesByOwner
@@ -40,15 +36,11 @@ paths:
           schema:
             type: string
       x-apigraph-backlinks:
-        default:
-          operations:
-            Get User by Username:
-              operationId: getUserByName
-              response: "200"
+        Get User by Username:
+          operationId: getUserByName
+          response: "200"
           parameters:
-            username:
-              from: Get User by Username
-              select: $response.body#/username
+            username: $response.body#/username
       responses:
         '200':
           description: repositories owned by the supplied user

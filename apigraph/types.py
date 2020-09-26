@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Any, Dict, NamedTuple, Tuple, Union
+from typing import Any, Dict, NamedTuple, Optional, Set, Tuple, Union
 
 from typing_extensions import Final, TypedDict
 
@@ -8,13 +8,9 @@ class NotSet(Enum):
     NOT_SET = auto()
 
 
-NOT_SET: Final = NotSet.NOT_SET
+NOT_SET: Final[NotSet] = NotSet.NOT_SET
 
-
-OperationIdPathIndex = Dict[str, Tuple[str, str]]
-
-
-HTTP_METHODS: Final = {
+HTTP_METHODS: Final[Set[str]] = {
     "get",
     "put",
     "post",
@@ -24,6 +20,8 @@ HTTP_METHODS: Final = {
     "patch",
     "trace",
 }
+
+OperationIdPathIndex = Dict[str, Tuple[str, str]]
 
 
 class LinkType(str, Enum):
@@ -35,6 +33,11 @@ class NodeKey(NamedTuple):
     doc_uri: str
     path: str
     method: str
+
+
+class EdgeKey(NamedTuple):
+    chain_id: Optional[str]
+    response_id: str
 
 
 JSONPointerStr = str
