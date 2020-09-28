@@ -93,7 +93,7 @@ x-apigraph-backlinks   Map[``string``, `Backlink Object`_ | `Reference Object`_]
 
 
 Backlink Object
-~~~~~~~~~~~~~~~
+---------------
 
 OpenAPI 3.0, Links go from ``Response -> Operation (downstream)``.
 
