@@ -523,6 +523,9 @@ def test_link_backlink_same_chain_consolidation():
 # TODO:
 # test cyclic dependency between docs (i.e. do we avoid infinite loop?)
 
+# TODO:
+# test backlinks via $ref
+
 
 def test_security_resolution():
     """

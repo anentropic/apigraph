@@ -9,14 +9,11 @@ from openapi_orm.models import Link, OpenAPI3Document, Operation
 from apigraph.loader import load_doc
 from apigraph.types import (
     HTTP_METHODS,
-    BacklinkParameters,
-    BacklinkRequestBodyParams,
     EdgeDetail,
     EdgeKey,
     LinkType,
     NodeKey,
     OperationIdPathIndex,
-    RuntimeExprStr,
 )
 
 
@@ -55,13 +52,6 @@ def _build_operation_id_path_index(doc: OpenAPI3Document) -> OperationIdPathInde
     return index
 
 
-ReturnTuple = Tuple[
-    Dict[str, BacklinkParameters],
-    Dict[str, RuntimeExprStr],
-    Dict[str, BacklinkRequestBodyParams],
-]
-
-
 class APIGraph:
     # using a multi-graph because it's possible to have redundant
     # link + backlink i.e. directed edge defined in same direction
@@ -90,18 +80,30 @@ class APIGraph:
         path = doc.paths[node_key.path]
         return getattr(path, node_key.method)
 
-    def get_prerequisites(self, node_key: NodeKey, chain_id: str) -> nx.DiGraph:
+    def get_ancestors(
+        self, node_key: NodeKey, chain_id: str, traverse_anonymous: bool = True
+    ) -> nx.MultiDiGraph:
         """
         Get a subgraph view containing ancestors of `node_key` which
         are related via edges having this `chain_id`.
         Includes the source `node_key` itself.
+
+        If `traverse_anonymous=True` then will return ancestors with no chain_id
+        in additional to the requested chain_id (this is because chainId is an
+        extension to OpenAPI and you may reach documents which do not use it, also
+        it allows to avoid creating redundant links for multiple chains, null chain
+        can be used as a default link).
         """
         if chain_id not in self._chains:
+            chain_ids_to_match = {chain_id}
+            if traverse_anonymous:
+                chain_ids_to_match.add(None)
             chain_view = nx.subgraph_view(
                 self.graph,
-                filter_edge=lambda _u, _v, edge_key: edge_key[0] == chain_id,
+                filter_edge=lambda _u, _v, key: key.chain_id in chain_ids_to_match,
             )
-            self._chains[chain_id] = nx.freeze(nx.DiGraph(chain_view))
+            # materialize the view
+            self._chains[chain_id] = nx.MultiDiGraph(chain_view)
         chain = self._chains[chain_id]
         dependencies = nx.ancestors(chain, node_key) | {node_key}
         return chain.subgraph(dependencies)

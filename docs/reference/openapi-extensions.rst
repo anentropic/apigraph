@@ -71,11 +71,11 @@ Our aim is to fully specify all of the *upstream* dependencies of the current op
 
 Conceptually it is similar to the ``links`` field in a `Response Object`_ and the structure is deliberately similar.
 
-=====================  ===================================  ===========
-Field Name             Type                                 Description
-=====================  ===================================  ===========
-x-apigraph-backlinks   Map[``string``, `Backlink Object`_]  A mapping of names to Backlink objects.
-=====================  ===================================  ===========
+=====================  =========================================================  ===========
+Field Name             Type                                                       Description
+=====================  =========================================================  ===========
+x-apigraph-backlinks   Map[``string``, `Backlink Object`_ | `Reference Object`_]  A mapping of names to Backlink objects.
+=====================  =========================================================  ===========
 
 
 Backlink Object
@@ -258,6 +258,7 @@ x-apigraph-chainId  ``string``  The chain-id to which this `Link Object`_ belong
 
 .. _Link Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#linkObject
 .. _Operation Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#operationObject
+.. _Reference Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#referenceObject
 .. _Response Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#responseObject
 .. _Server Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#serverObject
 .. _JSON Pointer: https://tools.ietf.org/html/rfc6901

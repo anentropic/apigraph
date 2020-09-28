@@ -5,17 +5,7 @@ info:
 paths:
   /invite:
     post:
-      operationId: Redeem Invite
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - invite_id
-              properties:
-                name:
-                  invite_id: string
+      operationId: Create Invite
       responses:
         '201':
           content:
@@ -23,19 +13,10 @@ paths:
               schema:
                 type: object
                 properties:
-                  name:
-                    token: string
-          links:
-            New User v1:
-              operationId: createUserv1
-              parameters:
-                invite-token: $response.body#/token
-              x-apigraph-chainId: invited
-            New User:
-              operationId: createUser
-              parameters:
-                invite-token: $response.body#/token
-              x-apigraph-chainId: invited
+                  id:
+                    type: string
+                  token:
+                    type: string
   /1.0/users:
     post:
       operationId: createUserv1
@@ -52,12 +33,6 @@ paths:
                   type: string
                 name:
                   type: string
-      parameters: 
-        - name: invite-token
-          in: query
-          required: false
-          schema:
-            type: string
       responses:
         '201':
           content:
@@ -86,12 +61,23 @@ paths:
                   type: string
                 name:
                   type: string
+                invite-token:
+                  type: string
       parameters: 
-        - name: invite-token
+        - name: invite-id
           in: query
           required: false
           schema:
             type: string
+      x-apigraph-backlinks:
+        Redeem Invite:
+          description: Create a user by redeeming an invite id+token
+          operationId: Create Invite
+          response: '201'
+          parameters:
+            invite-id: $response.body#/id
+          requestBodyParameters:
+            /invite-token: $response.body#/token
       responses:
         '201':
           content:
@@ -130,7 +116,7 @@ paths:
   /2.0/users/{username}: 
     get: 
       operationId: getUserByName
-      parameters: 
+      parameters:
       - name: username
         in: path
         required: true
