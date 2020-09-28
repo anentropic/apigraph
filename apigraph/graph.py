@@ -53,12 +53,12 @@ def _build_operation_id_path_index(doc: OpenAPI3Document) -> OperationIdPathInde
 
 
 class APIGraph:
-    # using a multi-graph because it's possible to have redundant
-    # link + backlink i.e. directed edge defined in same direction
-    # but from both ends
-    # if they share a chain-id then declarest won't know what to do
-    # so we consolidate redundant links (fwd+backlink of same chain-id)
-    # automatically since they will have the same edge key, last write wins
+    # We are using a multi-graph because it's possible to have multiple
+    # links or backlinks between same endpoints i.e. multiple edges
+    # having the same direction but with different chainIds.
+    # In cases where they share a chainId then apigraph will consolidate
+    # the redundant edges into one by preferring backlinks over links, and
+    # arbitrarily in case of link+link or backlink+backlink redundancy.
     graph: nx.MultiDiGraph
     docs: Dict[str, OpenAPI3Document]
     _indexes: Dict[str, OperationIdPathIndex]
@@ -169,10 +169,11 @@ class APIGraph:
             # (such nodes will have attrs filled when we get round to crawling their doc)
             for name, backlink in backlinks.items():
                 from_node, chain_id, response_id = edge_args_for_backlink(backlink)
+                key = EdgeKey(chain_id, response_id)
                 self.graph.add_edge(
                     from_node,
                     to_node,
-                    key=EdgeKey(chain_id, response_id),
+                    key=key,
                     response_id=response_id,
                     chain_id=chain_id,
                     detail=EdgeDetail(
@@ -203,10 +204,21 @@ class APIGraph:
             # (such nodes will have attrs filled when we get round to crawling their doc)
             for name, link in links.items():
                 to_node, chain_id = edge_args_for_link(link)
+                key = EdgeKey(chain_id, response_id)
+                # in case of redundant edges, backlinks win
+                # (and otherwise last-write wins)
+                if (
+                    from_node in self.graph
+                    and to_node in self.graph[from_node]
+                    and key in self.graph[from_node][to_node]
+                    and self.graph[from_node][to_node][key]["detail"].link_type
+                    is LinkType.BACKLINK
+                ):
+                    continue
                 self.graph.add_edge(
                     from_node,
                     to_node,
-                    key=EdgeKey(chain_id, response_id),
+                    key=key,
                     response_id=response_id,
                     chain_id=chain_id,
                     detail=EdgeDetail(
@@ -233,12 +245,10 @@ class APIGraph:
                         ),
                     )
 
-                    add_backlinks(node_key, operation.backlinks)
-
                     for response_id, response in operation.responses.items():
-                        links = getattr(response, "links", None)
-                        if links is not None:
-                            add_links(node_key, response_id, links)
+                        add_links(node_key, response_id, response.links)
+
+                    add_backlinks(node_key, operation.backlinks)
 
         self.docs[start_uri] = doc
 

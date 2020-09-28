@@ -120,6 +120,64 @@ def test_cross_doc_links(httpx_mock):
     ] == expected_edges
 
 
+def test_cross_doc_links_circular_ref(httpx_mock):
+    """
+    Test that we don't get stuck in infinite loop when resolving doc refs.
+
+    NOTE:
+    cross-doc-links.yaml and cross-doc-links-circular-ref.yaml together
+    form a circular dependency in that both docs contain links to each other.
+    This is via a mutual backlink and a link, since both edges are directed
+    identically this should form a redundant edge. So we have a circular ref
+    between docs, but not a circular dependency in the request graph.
+
+    NOTE:
+    since we are re-using cross-doc-links.yaml but with a different `fixture_uri`
+    pre-parse substitution, this test relies on `clear_cache` auto fixture having
+    `function` scope...
+    """
+    doc_uri = "https://fakeurl/cross-doc-links.yaml"
+    other_doc_uri = fixture_uri("cross-doc-circular-ref.yaml")
+
+    raw_doc = str_doc_with_substitutions(
+        "tests/fixtures/cross-doc-links.yaml", {"fixture_uri": other_doc_uri},
+    )
+    httpx_mock.add_response(url=doc_uri, data=raw_doc)
+
+    apigraph = APIGraph(doc_uri)
+    assert apigraph.docs.keys() == {doc_uri, other_doc_uri}
+
+    expected_nodes = [
+        NodeKey(doc_uri, "/2.0/users", "post"),
+        NodeKey(other_doc_uri, "/2.0/users/{username}", "get"),
+    ]
+    # the backlink+link edges in this case are redundant
+    # we expect apigraph to take the backlink over the link
+    expected_edges = [
+        (
+            expected_nodes[0],
+            expected_nodes[1],
+            (None, "201"),
+            {
+                "response_id": "201",
+                "chain_id": None,
+                "detail": EdgeDetail(
+                    link_type=LinkType.BACKLINK,
+                    name="createUser",
+                    description="",
+                    parameters={},
+                    requestBody=None,
+                    requestBodyParameters={"/username": "$request.path.username"},
+                ),
+            },
+        ),
+    ]
+    assert [node for node in apigraph.graph.nodes] == expected_nodes
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
+
+
 def test_links_multiple_chains(httpx_mock):
     doc_uri = fixture_uri("links-with-multiple-chain-id.yaml")
 
@@ -481,10 +539,10 @@ def test_backlinks_request_body_params():
 
 def test_link_backlink_same_chain_consolidation():
     """
-    last-write wins, in this case the backlink is crawled last and
-    is the detail stored for the edge
-
-    TODO: backlink always wins
+    in case of redundant edge key defined as both link and backlink
+    we should store a single edge with detail from the backlink
+    (we expect backlinks to be more explicit as they are an apigraph
+    extension to OpenAPI)
     """
     doc_uri = fixture_uri("backlinks-with-links-same-chain-id.yaml")
 
@@ -521,7 +579,10 @@ def test_link_backlink_same_chain_consolidation():
 
 
 # TODO:
-# test cyclic dependency between docs (i.e. do we avoid infinite loop?)
+# a circular dependency between endpoints... presumably it's possible
+# to annotate one but we should validate and reject this on some level
+# ...either when building graph? or when generating a request plan?
+# (redundant edges in same direction don't count)
 
 # TODO:
 # test backlinks via $ref
