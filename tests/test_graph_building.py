@@ -1,6 +1,7 @@
 import pytest
+from pydantic import ValidationError
 
-from apigraph.graph import APIGraph
+from apigraph.graph import APIGraph, DuplicateOperationId
 from apigraph.types import EdgeDetail, LinkType, NodeKey
 
 from .helpers import fixture_uri, str_doc_with_substitutions
@@ -637,15 +638,28 @@ def test_backlinks_via_components_ref():
     ] == expected_edges
 
 
-# TODO:
-# error cases:
-# - InvalidLinkError
-# - InvalidBacklinkError
-# - DuplicateOperationId
+@pytest.mark.parametrize(
+    "fixture,exception",
+    [
+        ("invalid-doc-duplicate-operationid.yaml", DuplicateOperationId),
+        ("invalid-link-no-operation-identifier.yaml", ValidationError),
+        ("invalid-backlink-operationid-no-response-identifier.yaml", ValidationError),
+        ("invalid-backlink-operationref-no-response-identifier.yaml", ValidationError),
+        ("invalid-backlink-no-operation-identifier.yaml", ValidationError),
+    ],
+)
+def test_invalid(fixture, exception):
+    doc_uri = fixture_uri(fixture)
+
+    with pytest.raises(exception):
+        APIGraph(doc_uri)
 
 
 def test_security_resolution():
     """
+    OpenAPI allows to specify authentication (`security`) method and
+    credentials at the document level, but with per-Operation overrides.
+
     There are four possible cases:
     1. operation inherits global security options from OpenAPI element
     2. operation overrides with [] to remove all security requirements
@@ -653,6 +667,9 @@ def test_security_resolution():
     4. operation overrides with a subset of a global
     (there'd also be a 5th option combining 3+4, we'll assume supported due to
     implementation)
+
+    In Apigraph we want to resolve the overrides and attach the correct
+    security scheme to each node, i.e. for later use in a request-plan.
     """
     doc_uri = fixture_uri("security.yaml")
 

@@ -43,6 +43,9 @@ def _build_operation_id_path_index(doc: OpenAPI3Document) -> OperationIdPathInde
     `operationId` attribute (in links etc). To ease fetching an
     operation by its name we build an index of id -> (path, method)
     It's then trivial to fetch an Operation from doc by (path, method).
+
+    Raises:
+        DuplicateOperationId
     """
     index: OperationIdPathIndex = {}
     for path, path_item in doc.paths.items():
@@ -167,6 +170,10 @@ class APIGraph:
         def edge_args_for_backlink(
             backlink: Dict[str, Dict]
         ) -> Tuple[NodeKey, Optional[str], str]:
+            """
+            Raises:
+                InvalidBacklinkError
+            """
             response_ref = backlink.responseRef
             operation_id = backlink.operationId
             operation_ref = backlink.operationRef
@@ -180,6 +187,7 @@ class APIGraph:
             elif operation_ref is not None and response_id is not None:
                 doc_uri, path, method = _decode_operation_ref(operation_ref)
             else:
+                # (should not be reachable due to pydantic model validation)
                 raise InvalidBacklinkError(backlink)
             return NodeKey(doc_uri, path, method), chain_id, response_id
 
@@ -206,6 +214,10 @@ class APIGraph:
                 )
 
         def edge_args_for_link(link: Link) -> Tuple[NodeKey, str, Link]:
+            """
+            Raises:
+                InvalidLinkError
+            """
             operation_id = link.operationId
             operation_ref = link.operationRef
             chain_id = link.chainId
@@ -215,6 +227,7 @@ class APIGraph:
             elif operation_ref is not None:
                 doc_uri, path, method = _decode_operation_ref(operation_ref)
             else:
+                # (should not be reachable due to pydantic model validation)
                 raise InvalidLinkError(link)
             return NodeKey(doc_uri, path, method), chain_id
 
@@ -230,8 +243,10 @@ class APIGraph:
                     from_node in self.graph
                     and to_node in self.graph[from_node]
                     and key in self.graph[from_node][to_node]
-                    and self.graph[from_node][to_node][key]["detail"].link_type
-                    is LinkType.BACKLINK
+                    and (
+                        self.graph[from_node][to_node][key]["detail"].link_type
+                        is LinkType.BACKLINK
+                    )
                 ):
                     continue
                 self.graph.add_edge(
@@ -254,7 +269,7 @@ class APIGraph:
             for method in HTTP_METHODS:
                 operation = getattr(path_item, method)
                 if operation is not None:
-                    node_key = NodeKey(doc_uri=start_uri, path=path, method=method,)
+                    node_key = NodeKey(doc_uri=start_uri, path=path, method=method)
                     self.graph.add_node(
                         node_key,
                         security=(

@@ -217,7 +217,7 @@ def test_chain_for_node_with_cycle():
     apigraph = APIGraph(doc_uri)
     assert apigraph.docs.keys() == {doc_uri}
 
-    with pytest.assertRaises(CircularDependencyError):
+    with pytest.raises(CircularDependencyError):
         apigraph.chain_for_node(
             node_key=NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
             chain_id=None,

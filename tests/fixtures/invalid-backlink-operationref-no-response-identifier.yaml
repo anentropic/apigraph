@@ -1,0 +1,61 @@
+openapi: 3.0.0
+info: 
+  title: Backlinks Example
+  description: Document showing simple within-doc backlink defined via operationId+response
+  version: 1.0.0
+paths: 
+  /2.0/users/{username}: 
+    get: 
+      operationId: getUserByName
+      parameters: 
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+      responses: 
+        '200':
+          description: The User
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/user'
+  /2.0/repositories/{username}:
+    get:
+      operationId: getRepositoriesByOwner
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      x-apigraph-backlinks:
+        Get User by Username:
+          operationRef: '#/paths/~12.0~1users~1%7Busername%7D/get'
+          parameters:
+            username: $response.body#/username
+      responses:
+        '200':
+          description: repositories owned by the supplied user
+          content: 
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/repository'
+components:
+  schemas: 
+    user: 
+      type: object
+      properties: 
+        username: 
+          type: string
+        uuid: 
+          type: string
+    repository: 
+      type: object
+      properties: 
+        slug: 
+          type: string
+        owner: 
+          $ref: '#/components/schemas/user'
