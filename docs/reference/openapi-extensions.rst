@@ -62,8 +62,8 @@ The value of the parameter ``$response.body#/foo`` is a runtime expression which
 (see also: `x-apigraph-chainId`_ below)
 
 
-``x-apigraph-backlinks``
-------------------------
+``x-apigraph-backlinks`` (Operation)
+------------------------------------
 
 This is an extension to the `Operation Object`_.
 
@@ -78,10 +78,24 @@ x-apigraph-backlinks   Map[``string``, `Backlink Object`_ | `Reference Object`_]
 =====================  =========================================================  ===========
 
 
+``x-apigraph-backlinks`` (Components)
+-------------------------------------
+
+This is an extension to the `Components Object`_.
+
+This allows us to support defining backlinks on an Operation via a ``$ref`` to a common definition in Components, the same as you can for ``links``.
+
+=====================  =========================================================  ===========
+Field Name             Type                                                       Description
+=====================  =========================================================  ===========
+x-apigraph-backlinks   Map[``string``, `Backlink Object`_ | `Reference Object`_]  A mapping of names to Backlink objects.
+=====================  =========================================================  ===========
+
+
 Backlink Object
 ~~~~~~~~~~~~~~~
 
-OpenAPI 3.0 Links go from ``Response -> Operation (downstream)``.
+OpenAPI 3.0, Links go from ``Response -> Operation (downstream)``.
 
 Backlinks are the reverse, ``Operation -> Response (upstream)``.
 
@@ -233,7 +247,7 @@ For Apigraph's purposes, if the Link does not have an ``x-apigraph-chainId`` fie
 ===================  ==========  ===========
 Field Name           Type        Description
 ===================  ==========  ===========
-x-apigraph-chainId  ``string``  The chain-id to which this `Link Object`_ belongs.
+x-apigraph-chainId   ``string``  The chain-id to which this `Link Object`_ belongs.
 ===================  ==========  ===========
 
 **Example**
@@ -256,6 +270,7 @@ x-apigraph-chainId  ``string``  The chain-id to which this `Link Object`_ belong
 	      operationId: postSubmit
 
 
+.. _Components Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#componentsObject
 .. _Link Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#linkObject
 .. _Operation Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#operationObject
 .. _Reference Object: https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#referenceObject

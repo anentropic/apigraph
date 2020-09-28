@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, FrozenSet, Optional, Tuple
 from urllib.parse import unquote, urlsplit, urlunsplit
 
 import inject
@@ -17,19 +17,23 @@ from apigraph.types import (
 )
 
 
-class InvalidLinkError(Exception):
+class InvalidDocumentError(Exception):
     pass
 
 
-class InvalidBacklinkError(Exception):
+class InvalidLinkError(InvalidDocumentError):
     pass
 
 
-class DuplicateOperationId(Exception):
+class InvalidBacklinkError(InvalidDocumentError):
     pass
 
 
-class InvalidBacklinksDeclaration(Exception):
+class DuplicateOperationId(InvalidDocumentError):
+    pass
+
+
+class CircularDependencyError(InvalidDocumentError):
     pass
 
 
@@ -60,9 +64,9 @@ class APIGraph:
     # the redundant edges into one by preferring backlinks over links, and
     # arbitrarily in case of link+link or backlink+backlink redundancy.
     graph: nx.MultiDiGraph
-    docs: Dict[str, OpenAPI3Document]
-    _indexes: Dict[str, OperationIdPathIndex]
-    _chains: Dict[str, nx.DiGraph]
+    docs: Dict[str, OpenAPI3Document]  # {<doc_uri>: <doc>}
+    _indexes: Dict[str, OperationIdPathIndex]  # {<doc_uri>: <index>}
+    _chains: Dict[FrozenSet[str], nx.DiGraph]  # {<matched chainIds>: <sub-graph>}
 
     def __init__(self, start_uri: str):
         self.graph = nx.MultiDiGraph()
@@ -80,31 +84,46 @@ class APIGraph:
         path = doc.paths[node_key.path]
         return getattr(path, node_key.method)
 
-    def get_ancestors(
+    def chain_for_node(
         self, node_key: NodeKey, chain_id: str, traverse_anonymous: bool = True
     ) -> nx.MultiDiGraph:
         """
         Get a subgraph view containing ancestors of `node_key` which
         are related via edges having this `chain_id`.
-        Includes the source `node_key` itself.
+
+        NOTE: Includes the node identified by `node_key` itself.
 
         If `traverse_anonymous=True` then will return ancestors with no chain_id
         in additional to the requested chain_id (this is because chainId is an
         extension to OpenAPI and you may reach documents which do not use it, also
         it allows to avoid creating redundant links for multiple chains, null chain
         can be used as a default link).
+
+        Raises:
+            CircularDependencyError
         """
+        if traverse_anonymous:
+            chain_key = frozenset([chain_id, None])
+        else:
+            chain_key = frozenset([chain_id])
+
         if chain_id not in self._chains:
-            chain_ids_to_match = {chain_id}
-            if traverse_anonymous:
-                chain_ids_to_match.add(None)
+            # materialize a view
             chain_view = nx.subgraph_view(
-                self.graph,
-                filter_edge=lambda _u, _v, key: key.chain_id in chain_ids_to_match,
+                self.graph, filter_edge=lambda _u, _v, key: key.chain_id in chain_key,
             )
-            # materialize the view
-            self._chains[chain_id] = nx.MultiDiGraph(chain_view)
-        chain = self._chains[chain_id]
+            # check for cycles...
+            # if not nx.is_directed_acyclic_graph(chain_view):
+            #     raise CircularDependencyError(
+            #         node_key,
+            #         chain_id,
+            #         nx.simple_cycles(chain_view),  # (generator)
+            #     )
+            # memoize
+            self._chains[chain_key] = nx.freeze(chain_view)
+        chain = self._chains[chain_key]
+
+        # filter chain for ancestors of node_key
         dependencies = nx.ancestors(chain, node_key) | {node_key}
         return chain.subgraph(dependencies)
 

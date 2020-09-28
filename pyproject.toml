@@ -14,7 +14,7 @@ httpx = "^0.13"
 diskcache = "^4.1.0"
 pydantic = "^1.5.1"
 json-spec = "^0.10.1"
-networkx = "^2.4"
+networkx = "^2.5"
 email-validator = "^1.1.1"
 
 [tool.poetry.dev-dependencies]

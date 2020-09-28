@@ -1,0 +1,88 @@
+openapi: 3.0.0
+info: 
+  title: Backlinks Components Example
+  version: 1.0.0
+paths:
+  /users:
+    post:
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - name
+              properties:
+                username:
+                  type: string
+                name:
+                  type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  username:
+                    type: string
+                  name:
+                    type: string
+  /1.0/users/{username}: 
+    get: 
+      operationId: getUserByNamev1
+      parameters: 
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+      x-apigraph-backlinks:
+        CreateUser:
+          $ref: '#/components/x-apigraph-backlinks/CreateUserForUsername'
+      responses: 
+        '200':
+          description: The User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+  /2.0/users/{username}: 
+    get: 
+      operationId: getUserByName
+      parameters: 
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+      x-apigraph-backlinks:
+        CreateUser:
+          $ref: '#/components/x-apigraph-backlinks/CreateUserForUsername'
+      responses: 
+        '200':
+          description: The User
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/user'
+components:
+  schemas: 
+    user: 
+      type: object
+      properties: 
+        username: 
+          type: string
+        uuid: 
+          type: string
+  x-apigraph-backlinks:
+    CreateUserForUsername:
+      description: Create a new user that matches the username of current request url segment
+      operationId: createUser
+      response: "201"
+      requestBodyParameters:
+        /username: $request.path.username

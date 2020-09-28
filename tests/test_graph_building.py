@@ -11,16 +11,17 @@ from .helpers import fixture_uri, str_doc_with_substitutions
     [
         ("links.yaml", None),
         ("links-with-chain-id.yaml", "v2"),
-        ("links-local-ref.yaml", None),
+        ("links-local-operationref.yaml", None),
     ],
 )
 def test_links(fixture, chain_id):
     """
     NOTE: these fixtures use within-doc $refs, so that is tested too
     links.yaml and links-with-chain-id.yaml use `operationId` while
-    links-local-ref.yaml uses a relative (local) `operationRef`
+    links-local-operationref.yaml uses a relative (local) `operationRef`
 
-    NOTE: these links all use `parameters` and not `requestBody`
+    NOTE: these links all use `parameters` and not `requestBody` or
+    `x-apigraph-requestBodyParameters`
     """
     doc_uri = fixture_uri(fixture)
 
@@ -306,13 +307,14 @@ def test_links_request_body_params(httpx_mock):
     "fixture,chain_id",
     [
         ("backlinks.yaml", None),
-        ("backlinks-local-ref.yaml", None),
+        ("backlinks-local-operationref.yaml", None),
         ("backlinks-response-ref.yaml", None),
     ],
 )
 def test_backlinks(fixture, chain_id):
     """
-    NOTE: these links all use `parameters` and not `requestBody`
+    NOTE: these links all use `parameters` and not `requestBody` or
+    `x-apigraph-requestBodyParameters`
     """
     doc_uri = fixture_uri(fixture)
 
@@ -578,14 +580,68 @@ def test_link_backlink_same_chain_consolidation():
     ] == expected_edges
 
 
-# TODO:
-# a circular dependency between endpoints... presumably it's possible
-# to annotate one but we should validate and reject this on some level
-# ...either when building graph? or when generating a request plan?
-# (redundant edges in same direction don't count)
+def test_backlinks_via_components_ref():
+    """
+    We should be able to specify a backlink by using a $ref to refer to
+    a shared backlink component.
+    """
+    doc_uri = fixture_uri("backlinks-components-ref.yaml")
+
+    apigraph = APIGraph(doc_uri)
+    assert apigraph.docs.keys() == {doc_uri}
+
+    expected_nodes = [
+        NodeKey(doc_uri, "/users", "post"),
+        NodeKey(doc_uri, "/1.0/users/{username}", "get"),
+        NodeKey(doc_uri, "/2.0/users/{username}", "get"),
+    ]
+    expected_edges = [
+        (
+            expected_nodes[0],
+            expected_nodes[1],
+            (None, "201"),
+            {
+                "response_id": "201",
+                "chain_id": None,
+                "detail": EdgeDetail(
+                    link_type=LinkType.BACKLINK,
+                    name="CreateUser",
+                    description="Create a new user that matches the username of current request url segment",
+                    parameters={},
+                    requestBody=None,
+                    requestBodyParameters={"/username": "$request.path.username"},
+                ),
+            },
+        ),
+        (
+            expected_nodes[0],
+            expected_nodes[2],
+            (None, "201"),
+            {
+                "response_id": "201",
+                "chain_id": None,
+                "detail": EdgeDetail(
+                    link_type=LinkType.BACKLINK,
+                    name="CreateUser",
+                    description="Create a new user that matches the username of current request url segment",
+                    parameters={},
+                    requestBody=None,
+                    requestBodyParameters={"/username": "$request.path.username"},
+                ),
+            },
+        ),
+    ]
+    assert [node for node in apigraph.graph.nodes] == expected_nodes
+    assert [
+        edge for edge in apigraph.graph.edges(data=True, keys=True)
+    ] == expected_edges
+
 
 # TODO:
-# test backlinks via $ref
+# error cases:
+# - InvalidLinkError
+# - InvalidBacklinkError
+# - DuplicateOperationId
 
 
 def test_security_resolution():

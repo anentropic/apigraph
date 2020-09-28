@@ -1,6 +1,7 @@
 openapi: 3.0.0
 info: 
-  title: Link Example
+  title: Links Example
+  description: Document having links belonging to multiple chainIds
   version: 1.0.0
 paths:
   /1.0/users/{username}: 

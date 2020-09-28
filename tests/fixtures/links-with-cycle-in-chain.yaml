@@ -1,8 +1,31 @@
 openapi: 3.0.0
-info: 
-  title: Link Example
+info:
+  title: Links Example
+  description: Links sharing an Apigraph chainId and forming a cyclic dependency - this will be a problem when extracting prerequisite requests.
   version: 1.0.0
-paths: 
+paths:
+  /1.0/users/{username}: 
+    get: 
+      operationId: getUserByNamev1
+      parameters: 
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+      responses: 
+        '200':
+          description: The User
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/user'
+          links:
+            userRepositories:
+              operationId: getRepositoriesByOwner
+              description: Get list of repositories
+              parameters:
+                username: $response.body#/username
   /2.0/users/{username}: 
     get: 
       operationId: getUserByName
@@ -21,7 +44,10 @@ paths:
                 $ref: '#/components/schemas/user'
           links:
             userRepositories:
-              $ref: '#/components/links/UserRepositories'
+              operationId: getRepositoriesByOwner
+              description: Get list of repositories
+              parameters:
+                username: $response.body#/username
   /2.0/repositories/{username}:
     get:
       operationId: getRepositoriesByOwner
@@ -40,14 +66,13 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/repository'
+          links:
+            Repo Owner:
+              operationId: getUserByNamev1
+              description: Get v1 user record of repo owner, this link is unnecessary and creates a cycle
+              parameters:
+                username: $request.path.username
 components:
-  links:
-    UserRepositories:
-      # returns array of '#/components/schemas/repository'
-      operationRef: '#/paths/~12.0~1repositories~1%7Busername%7D/get'
-      description: Get list of repositories
-      parameters:
-        username: $response.body#/username
   schemas: 
     user: 
       type: object

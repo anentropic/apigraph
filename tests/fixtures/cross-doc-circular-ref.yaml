@@ -1,7 +1,7 @@
-# in conjunction with cross-doc-links.yaml this will create a circular dependency
 openapi: 3.0.0
 info:
-  title: Cross-document Link Example
+  title: Cross-document Links Example
+  descriptions: in conjunction with cross-doc-links.yaml this will create a reference cycle between the two docs - this is allowed by Apigraph
   version: 1.0.0
 paths:
   /2.0/users/{username}: 

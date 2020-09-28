@@ -1,6 +1,7 @@
 openapi: 3.0.0
 info: 
   title: Backlinks Example
+  description: Document having backlinks belonging to multiple chainIds
   version: 1.0.0
 paths: 
   /1.0/users/{username}: 

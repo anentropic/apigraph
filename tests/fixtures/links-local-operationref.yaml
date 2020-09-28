@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info: 
   title: Links Example
-  description: Links extended with Apigraph chainId
+  description: Links using operationRef within the document
   version: 1.0.0
 paths: 
   /2.0/users/{username}: 
@@ -45,11 +45,10 @@ components:
   links:
     UserRepositories:
       # returns array of '#/components/schemas/repository'
-      operationId: getRepositoriesByOwner
+      operationRef: '#/paths/~12.0~1repositories~1%7Busername%7D/get'
       description: Get list of repositories
       parameters:
         username: $response.body#/username
-      x-apigraph-chainId: v2
   schemas: 
     user: 
       type: object

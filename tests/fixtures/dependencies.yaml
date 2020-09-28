@@ -1,6 +1,7 @@
 openapi: 3.0.0
 info: 
   title: Dependency Chain Test API
+  description: Complex example with multiple chains, links and backlinks
   version: 1.0.0
 paths:
   /invite:

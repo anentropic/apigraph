@@ -1,13 +1,13 @@
 import pytest
 
-from apigraph.graph import APIGraph
+from apigraph.graph import APIGraph, CircularDependencyError
 from apigraph.types import EdgeDetail, LinkType, NodeKey
 
 from .helpers import fixture_uri
 
 
 @pytest.mark.parametrize("traverse_anonymous", [True, False])
-def test_get_ancestors(traverse_anonymous):
+def test_chain_for_node(traverse_anonymous):
     """
     The test fixture contains three dependency chains, two of which end
     at `createUser` and `createUserv1` respectively and both beginning at
@@ -25,12 +25,12 @@ def test_get_ancestors(traverse_anonymous):
     apigraph = APIGraph(doc_uri)
     assert apigraph.docs.keys() == {doc_uri}
 
-    default_deps = apigraph.get_ancestors(
+    default_deps = apigraph.chain_for_node(
         node_key=NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
         chain_id="default",
         traverse_anonymous=traverse_anonymous,
     )
-    v1_deps = apigraph.get_ancestors(
+    v1_deps = apigraph.chain_for_node(
         node_key=NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
         chain_id="v1",
         traverse_anonymous=traverse_anonymous,
@@ -117,6 +117,7 @@ def test_get_ancestors(traverse_anonymous):
     )
 
     # dependencies from the "v1" chain
+    # (this chain is not extended by any anonymous links in the document)
     v1_expected_nodes = [
         NodeKey(doc_uri, "/1.0/users", "post"),
         NodeKey(doc_uri, "/1.0/users/{username}", "get"),
@@ -163,3 +164,64 @@ def test_get_ancestors(traverse_anonymous):
         sorted([edge for edge in v1_deps.edges(data=True, keys=True)])
         == v1_expected_edges
     )
+
+
+def test_chain_for_node_anonymous_memoization():
+    """
+    Repeated calls to `chain_for_node` with/without `traverse_anonymous=True`
+    should return different results (i.e. memoized independently)
+    """
+    doc_uri = fixture_uri("dependencies.yaml")
+
+    apigraph = APIGraph(doc_uri)
+    assert apigraph.docs.keys() == {doc_uri}
+
+    with_anon_deps = apigraph.chain_for_node(
+        node_key=NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+        chain_id="default",
+        traverse_anonymous=True,
+    )
+    with_anon_expected_nodes = [
+        NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+        NodeKey(doc_uri, "/2.0/users", "post"),
+        NodeKey(doc_uri, "/2.0/users/{username}", "get"),
+        NodeKey(doc_uri, "/invite", "post",),
+    ]
+    assert sorted([node for node in with_anon_deps.nodes]) == with_anon_expected_nodes
+
+    no_anon_deps = apigraph.chain_for_node(
+        node_key=NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+        chain_id="default",
+        traverse_anonymous=False,
+    )
+    no_anon_expected_nodes = [
+        NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+        NodeKey(doc_uri, "/2.0/users", "post"),
+        NodeKey(doc_uri, "/2.0/users/{username}", "get"),
+    ]
+    assert sorted([node for node in no_anon_deps.nodes]) == no_anon_expected_nodes
+
+
+@pytest.mark.skip
+def test_chain_for_node_with_cycle():
+    # TODO:
+    # a circular dependency between endpoints... presumably it's possible
+    # to annotate one but we should validate and reject this on some level
+    # ...either when building graph? or when generating a request plan?
+    # (redundant edges in same direction don't count)
+    # ...if the cycle involves distinct chainIds should we ignore it?
+    # ...what about a cycle of anonymous links?
+    # Maybe this check should be in request-plan generation
+    doc_uri = fixture_uri("links-with-cycle-in-chain.yaml")
+
+    apigraph = APIGraph(doc_uri)
+    assert apigraph.docs.keys() == {doc_uri}
+
+    with pytest.assertRaises(CircularDependencyError):
+        apigraph.chain_for_node(
+            node_key=NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+            chain_id=None,
+            traverse_anonymous=False,
+        )
+
+    # TODO
