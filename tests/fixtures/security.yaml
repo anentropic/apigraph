@@ -44,7 +44,7 @@ paths:
   /2.0/users/{username}: 
     get: 
       operationId: getUserByName
-      # no security override, either httpBearer or oAuth2Password accepted
+      # no security override, either httpBearer or OAuth2Password accepted
       parameters: 
       - name: username
         in: path
@@ -113,7 +113,7 @@ components:
     httpBearer:
       type: http
       scheme: bearer
-    oAuth2Password:
+    OAuth2Password:
       type: oauth2
       description: See https://dp_oauth2.schemarepo.com
       flows: 
@@ -124,5 +124,5 @@ components:
 security:
 # oneOf is required by default for all operations
 - httpBearer: []
-- oAuth2Password:
+- OAuth2Password:
   - read

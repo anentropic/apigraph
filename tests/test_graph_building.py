@@ -1,8 +1,16 @@
 import pytest
+from openapi_orm.models import In, Parameter, RequestBody
 from pydantic import ValidationError
 
 from apigraph.graph import APIGraph, DuplicateOperationId
-from apigraph.types import EdgeDetail, LinkType, NodeKey
+from apigraph.types import (
+    HttpMethod,
+    LinkDetail,
+    LinkType,
+    NodeKey,
+    OperationDetail,
+    ParamKey,
+)
 
 from .helpers import fixture_uri, str_doc_with_substitutions
 
@@ -30,8 +38,8 @@ def test_links(fixture, chain_id):
     assert apigraph.docs.keys() == {doc_uri}
 
     expected_nodes = [
-        NodeKey(doc_uri, "/2.0/users/{username}", "get"),
-        NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+        NodeKey(doc_uri, "/2.0/users/{username}", HttpMethod.GET),
+        NodeKey(doc_uri, "/2.0/repositories/{username}", HttpMethod.GET),
     ]
     expected_edges = [
         (
@@ -41,7 +49,7 @@ def test_links(fixture, chain_id):
             {
                 "response_id": "200",
                 "chain_id": chain_id,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.LINK,
                     name="userRepositories",
                     description="Get list of repositories",
@@ -76,9 +84,9 @@ def test_cross_doc_links(httpx_mock):
     assert apigraph.docs.keys() == {doc_uri, other_doc_uri}
 
     expected_nodes = [
-        NodeKey(doc_uri, "/2.0/users", "post"),
-        NodeKey(other_doc_uri, "/2.0/users/{username}", "get"),
-        NodeKey(other_doc_uri, "/2.0/repositories/{username}", "get"),
+        NodeKey(doc_uri, "/2.0/users", HttpMethod.POST),
+        NodeKey(other_doc_uri, "/2.0/users/{username}", HttpMethod.GET),
+        NodeKey(other_doc_uri, "/2.0/repositories/{username}", HttpMethod.GET),
     ]
     expected_edges = [
         (
@@ -88,7 +96,7 @@ def test_cross_doc_links(httpx_mock):
             {
                 "response_id": "201",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.LINK,
                     name="userByUsername",
                     description="",
@@ -105,7 +113,7 @@ def test_cross_doc_links(httpx_mock):
             {
                 "response_id": "200",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.LINK,
                     name="userRepositories",
                     description="Get list of repositories",
@@ -150,8 +158,8 @@ def test_cross_doc_links_circular_ref(httpx_mock):
     assert apigraph.docs.keys() == {doc_uri, other_doc_uri}
 
     expected_nodes = [
-        NodeKey(doc_uri, "/2.0/users", "post"),
-        NodeKey(other_doc_uri, "/2.0/users/{username}", "get"),
+        NodeKey(doc_uri, "/2.0/users", HttpMethod.POST),
+        NodeKey(other_doc_uri, "/2.0/users/{username}", HttpMethod.GET),
     ]
     # the backlink+link edges in this case are redundant
     # we expect apigraph to take the backlink over the link
@@ -163,7 +171,7 @@ def test_cross_doc_links_circular_ref(httpx_mock):
             {
                 "response_id": "201",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.BACKLINK,
                     name="createUser",
                     description="",
@@ -188,9 +196,9 @@ def test_links_multiple_chains(httpx_mock):
 
     # sorted
     expected_nodes = [
-        NodeKey(doc_uri, "/1.0/users/{username}", "get"),
-        NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
-        NodeKey(doc_uri, "/2.0/users/{username}", "get"),
+        NodeKey(doc_uri, "/1.0/users/{username}", HttpMethod.GET),
+        NodeKey(doc_uri, "/2.0/repositories/{username}", HttpMethod.GET),
+        NodeKey(doc_uri, "/2.0/users/{username}", HttpMethod.GET),
     ]
     expected_edges = [
         (
@@ -200,7 +208,7 @@ def test_links_multiple_chains(httpx_mock):
             {
                 "response_id": "200",
                 "chain_id": "v1",
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.LINK,
                     name="userRepositories",
                     description="Get list of repositories",
@@ -217,7 +225,7 @@ def test_links_multiple_chains(httpx_mock):
             {
                 "response_id": "200",
                 "chain_id": "default",
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.LINK,
                     name="userRepositories",
                     description="Get list of repositories",
@@ -241,8 +249,8 @@ def test_links_request_body(httpx_mock):
     assert apigraph.docs.keys() == {doc_uri}
 
     expected_nodes = [
-        NodeKey(doc_uri, "/users", "post"),
-        NodeKey(doc_uri, "/pets/{id}/add-owner", "post"),
+        NodeKey(doc_uri, "/users", HttpMethod.POST),
+        NodeKey(doc_uri, "/pets/{id}/add-owner", HttpMethod.POST),
     ]
     expected_edges = [
         (
@@ -252,7 +260,7 @@ def test_links_request_body(httpx_mock):
             {
                 "response_id": "201",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.LINK,
                     name="Add Pet",
                     description="",
@@ -276,8 +284,8 @@ def test_links_request_body_params(httpx_mock):
     assert apigraph.docs.keys() == {doc_uri}
 
     expected_nodes = [
-        NodeKey(doc_uri, "/users", "post"),
-        NodeKey(doc_uri, "/pets", "post"),
+        NodeKey(doc_uri, "/users", HttpMethod.POST),
+        NodeKey(doc_uri, "/pets", HttpMethod.POST),
     ]
     expected_edges = [
         (
@@ -287,7 +295,7 @@ def test_links_request_body_params(httpx_mock):
             {
                 "response_id": "201",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.LINK,
                     name="Add Pet",
                     description="",
@@ -323,8 +331,8 @@ def test_backlinks(fixture, chain_id):
     assert apigraph.docs.keys() == {doc_uri}
 
     expected_nodes = [
-        NodeKey(doc_uri, "/2.0/users/{username}", "get"),
-        NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+        NodeKey(doc_uri, "/2.0/users/{username}", HttpMethod.GET),
+        NodeKey(doc_uri, "/2.0/repositories/{username}", HttpMethod.GET),
     ]
     expected_edges = [
         (
@@ -334,7 +342,7 @@ def test_backlinks(fixture, chain_id):
             {
                 "response_id": "200",
                 "chain_id": chain_id,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username",
                     description="",
@@ -370,9 +378,9 @@ def test_cross_doc_backlinks(httpx_mock):
 
     # (sorted)
     expected_nodes = [
-        NodeKey(other_doc_uri, "/2.0/users", "post"),
-        NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
-        NodeKey(doc_uri, "/2.0/users/{username}", "get"),
+        NodeKey(other_doc_uri, "/2.0/users", HttpMethod.POST),
+        NodeKey(doc_uri, "/2.0/repositories/{username}", HttpMethod.GET),
+        NodeKey(doc_uri, "/2.0/users/{username}", HttpMethod.GET),
     ]
     expected_edges = [
         (
@@ -382,7 +390,7 @@ def test_cross_doc_backlinks(httpx_mock):
             {
                 "response_id": "201",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.BACKLINK,
                     name="Create User",
                     description="",
@@ -399,7 +407,7 @@ def test_cross_doc_backlinks(httpx_mock):
             {
                 "response_id": "200",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username",
                     description="",
@@ -424,9 +432,9 @@ def test_backlinks_multiple_chains():
     assert apigraph.docs.keys() == {doc_uri}
 
     expected_nodes = [
-        NodeKey(doc_uri, "/1.0/users/{username}", "get"),
-        NodeKey(doc_uri, "/2.0/users/{username}", "get"),
-        NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+        NodeKey(doc_uri, "/1.0/users/{username}", HttpMethod.GET),
+        NodeKey(doc_uri, "/2.0/users/{username}", HttpMethod.GET),
+        NodeKey(doc_uri, "/2.0/repositories/{username}", HttpMethod.GET),
     ]
     expected_edges = [
         (
@@ -436,7 +444,7 @@ def test_backlinks_multiple_chains():
             {
                 "response_id": "200",
                 "chain_id": "v1",
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username v1",
                     description="",
@@ -453,7 +461,7 @@ def test_backlinks_multiple_chains():
             {
                 "response_id": "200",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username",
                     description="",
@@ -477,8 +485,8 @@ def test_backlinks_request_body():
     assert apigraph.docs.keys() == {doc_uri}
 
     expected_nodes = [
-        NodeKey(doc_uri, "/users", "post"),
-        NodeKey(doc_uri, "/pets/{id}/add-owner", "post"),
+        NodeKey(doc_uri, "/users", HttpMethod.POST),
+        NodeKey(doc_uri, "/pets/{id}/add-owner", HttpMethod.POST),
     ]
     expected_edges = [
         (
@@ -488,7 +496,7 @@ def test_backlinks_request_body():
             {
                 "response_id": "201",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.BACKLINK,
                     name="New User",
                     description="",
@@ -512,8 +520,8 @@ def test_backlinks_request_body_params():
     assert apigraph.docs.keys() == {doc_uri}
 
     expected_nodes = [
-        NodeKey(doc_uri, "/users", "post"),
-        NodeKey(doc_uri, "/pets", "post"),
+        NodeKey(doc_uri, "/users", HttpMethod.POST),
+        NodeKey(doc_uri, "/pets", HttpMethod.POST),
     ]
     expected_edges = [
         (
@@ -523,7 +531,7 @@ def test_backlinks_request_body_params():
             {
                 "response_id": "201",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.BACKLINK,
                     name="New User",
                     description="",
@@ -553,8 +561,8 @@ def test_link_backlink_same_chain_consolidation():
     assert apigraph.docs.keys() == {doc_uri}
 
     expected_nodes = [
-        NodeKey(doc_uri, "/2.0/users/{username}", "get"),
-        NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+        NodeKey(doc_uri, "/2.0/users/{username}", HttpMethod.GET),
+        NodeKey(doc_uri, "/2.0/repositories/{username}", HttpMethod.GET),
     ]
     expected_edges = [
         (
@@ -564,7 +572,7 @@ def test_link_backlink_same_chain_consolidation():
             {
                 "response_id": "200",
                 "chain_id": "default",
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.BACKLINK,
                     name="Get User by Username",
                     description="",
@@ -592,9 +600,9 @@ def test_backlinks_via_components_ref():
     assert apigraph.docs.keys() == {doc_uri}
 
     expected_nodes = [
-        NodeKey(doc_uri, "/users", "post"),
-        NodeKey(doc_uri, "/1.0/users/{username}", "get"),
-        NodeKey(doc_uri, "/2.0/users/{username}", "get"),
+        NodeKey(doc_uri, "/users", HttpMethod.POST),
+        NodeKey(doc_uri, "/1.0/users/{username}", HttpMethod.GET),
+        NodeKey(doc_uri, "/2.0/users/{username}", HttpMethod.GET),
     ]
     expected_edges = [
         (
@@ -604,7 +612,7 @@ def test_backlinks_via_components_ref():
             {
                 "response_id": "201",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.BACKLINK,
                     name="CreateUser",
                     description="Create a new user that matches the username of current request url segment",
@@ -621,7 +629,7 @@ def test_backlinks_via_components_ref():
             {
                 "response_id": "201",
                 "chain_id": None,
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.BACKLINK,
                     name="CreateUser",
                     description="Create a new user that matches the username of current request url segment",
@@ -676,42 +684,124 @@ def test_security_resolution():
     apigraph = APIGraph(doc_uri)
     assert apigraph.docs.keys() == {doc_uri}
 
-    assert apigraph.docs[doc_uri].security == [
+    doc = apigraph.docs[doc_uri]
+
+    assert doc.security == [
         {"httpBearer": []},
-        {"oAuth2Password": ["read"]},
+        {"OAuth2Password": ["read"]},
     ]
     assert (
-        apigraph.docs[doc_uri].paths["/2.0/users/{username}"].get.security
-    ) is None  # no override defined on operation
+        doc.paths["/2.0/users/{username}"].get.security is None
+    )  # no override defined on operation
 
-    # sorted
+    # sorted (abitrarily in path order for sake of test)
     expected_nodes = [
         (
-            NodeKey(doc_uri, "/1.0/users/{username}", "get"),
+            NodeKey(doc_uri, "/1.0/users/{username}", HttpMethod.GET),
             {
-                # override: only httpBearer accepted
-                "security": [{"httpBearer": []}],
+                "detail": OperationDetail(
+                    path="/1.0/users/{username}",
+                    method=HttpMethod.GET,
+                    summary="",
+                    description="",
+                    parameters={
+                        ParamKey("username", In.PATH): Parameter(
+                            **{
+                                "name": "username",
+                                "in": In.PATH,
+                                "required": True,
+                                "schema": {"type": "string"},
+                            }
+                        ),
+                    },
+                    requestBody=None,
+                    # override: only httpBearer accepted
+                    security_schemes={
+                        frozenset({doc.components.securitySchemes["httpBearer"]}),
+                    },
+                )
             },
         ),
         (
-            NodeKey(doc_uri, "/2.0/repositories/{username}", "get"),
+            NodeKey(doc_uri, "/2.0/repositories/{username}", HttpMethod.GET),
             {
-                # override: only apiKey accepted
-                "security": [{"apiKey": []}],
+                "detail": OperationDetail(
+                    path="/2.0/repositories/{username}",
+                    method=HttpMethod.GET,
+                    summary="",
+                    description="",
+                    parameters={
+                        ParamKey("username", In.PATH): Parameter(
+                            **{
+                                "name": "username",
+                                "in": In.PATH,
+                                "required": True,
+                                "schema": {"type": "string"},
+                            }
+                        ),
+                    },
+                    requestBody=None,
+                    # override: only apiKey accepted
+                    security_schemes={
+                        frozenset({doc.components.securitySchemes["apiKey"]}),
+                    },
+                )
             },
         ),
         (
-            NodeKey(doc_uri, "/2.0/users", "post"),
+            NodeKey(doc_uri, "/2.0/users", HttpMethod.POST),
             {
-                # override: no security required
-                "security": [],
+                "detail": OperationDetail(
+                    path="/2.0/users",
+                    method=HttpMethod.POST,
+                    summary="",
+                    description="",
+                    parameters={},
+                    requestBody=RequestBody(
+                        **{
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "username": {"type": "string"},
+                                            "uuid": {"type": "string"},
+                                        },
+                                    },
+                                },
+                            },
+                        }
+                    ),
+                    # override: no security required
+                    security_schemes=set(),
+                )
             },
         ),
         (
-            NodeKey(doc_uri, "/2.0/users/{username}", "get"),
+            NodeKey(doc_uri, "/2.0/users/{username}", HttpMethod.GET),
             {
-                # no security override, either httpBearer or oAuth2Password accepted
-                "security": [{"httpBearer": []}, {"oAuth2Password": ["read"]}],
+                "detail": OperationDetail(
+                    path="/2.0/users/{username}",
+                    method=HttpMethod.GET,
+                    summary="",
+                    description="",
+                    parameters={
+                        ParamKey("username", In.PATH): Parameter(
+                            **{
+                                "name": "username",
+                                "in": In.PATH,
+                                "required": True,
+                                "schema": {"type": "string"},
+                            }
+                        ),
+                    },
+                    requestBody=None,
+                    # no security override, either httpBearer or OAuth2Password accepted
+                    security_schemes={
+                        frozenset({doc.components.securitySchemes["httpBearer"]}),
+                        frozenset({doc.components.securitySchemes["OAuth2Password"]}),
+                    },
+                )
             },
         ),
     ]

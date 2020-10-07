@@ -1,7 +1,7 @@
 import pytest
 
 from apigraph.graph import APIGraph, CircularDependencyError
-from apigraph.types import EdgeDetail, LinkType, NodeKey
+from apigraph.types import LinkDetail, LinkType, NodeKey
 
 from .helpers import fixture_uri
 
@@ -59,7 +59,7 @@ def test_chain_for_node(traverse_anonymous):
             {
                 "response_id": "201",
                 "chain_id": "default",
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.LINK,
                     name="userByUsername",
                     description="",
@@ -76,7 +76,7 @@ def test_chain_for_node(traverse_anonymous):
             {
                 "response_id": "200",
                 "chain_id": "default",
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.LINK,
                     name="userRepositories",
                     description="Get list of repositories",
@@ -98,7 +98,7 @@ def test_chain_for_node(traverse_anonymous):
                 {
                     "response_id": "201",
                     "chain_id": None,
-                    "detail": EdgeDetail(
+                    "detail": LinkDetail(
                         link_type=LinkType.BACKLINK,
                         name="Redeem Invite",
                         description="Create a user by redeeming an invite id+token",
@@ -131,7 +131,7 @@ def test_chain_for_node(traverse_anonymous):
             {
                 "response_id": "201",
                 "chain_id": "v1",
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.LINK,
                     name="userByUsername",
                     description="",
@@ -148,7 +148,7 @@ def test_chain_for_node(traverse_anonymous):
             {
                 "response_id": "200",
                 "chain_id": "v1",
-                "detail": EdgeDetail(
+                "detail": LinkDetail(
                     link_type=LinkType.LINK,
                     name="userRepositories",
                     description="Get list of repositories",

@@ -1,19 +1,28 @@
-from typing import Dict, FrozenSet, Optional, Tuple
+from typing import Dict, FrozenSet, Optional, Set, Tuple, Union
 from urllib.parse import unquote, urlsplit, urlunsplit
 
 import inject
 import networkx as nx
 from jsonspec.pointer import Pointer
-from openapi_orm.models import Link, OpenAPI3Document, Operation
+from openapi_orm.models import (
+    Link,
+    OpenAPI3Document,
+    Operation,
+    Parameter,
+    PathItem,
+    SecurityScheme,
+)
 
 from apigraph.loader import load_doc
 from apigraph.types import (
-    HTTP_METHODS,
-    EdgeDetail,
     EdgeKey,
+    HttpMethod,
+    LinkDetail,
     LinkType,
     NodeKey,
+    OperationDetail,
     OperationIdPathIndex,
+    ParamKey,
 )
 
 
@@ -37,6 +46,14 @@ class CircularDependencyError(InvalidDocumentError):
     pass
 
 
+class DuplicateParameterError(InvalidDocumentError):
+    pass
+
+
+class InvalidSecuritySchemeError(InvalidDocumentError):
+    pass
+
+
 def _build_operation_id_path_index(doc: OpenAPI3Document) -> OperationIdPathIndex:
     """
     OpenAPI spec allows to refer to an Operation by its name, using the
@@ -49,8 +66,8 @@ def _build_operation_id_path_index(doc: OpenAPI3Document) -> OperationIdPathInde
     """
     index: OperationIdPathIndex = {}
     for path, path_item in doc.paths.items():
-        for method in HTTP_METHODS:
-            operation = getattr(path_item, method)
+        for method in HttpMethod:
+            operation = getattr(path_item, method.value)
             operation_id = getattr(operation, "operationId", None)
             if operation_id is not None:
                 if operation_id in index:
@@ -203,7 +220,7 @@ class APIGraph:
                     key=key,
                     response_id=response_id,
                     chain_id=chain_id,
-                    detail=EdgeDetail(
+                    detail=LinkDetail(
                         link_type=LinkType.BACKLINK,
                         name=name,
                         description=backlink.description,
@@ -255,7 +272,7 @@ class APIGraph:
                     key=key,
                     response_id=response_id,
                     chain_id=chain_id,
-                    detail=EdgeDetail(
+                    detail=LinkDetail(
                         link_type=LinkType.LINK,
                         name=name,
                         description=link.description,
@@ -265,17 +282,74 @@ class APIGraph:
                     ),
                 )
 
+        def get_parameters(
+            source: Union[PathItem, Operation]
+        ) -> Dict[ParamKey, Parameter]:
+            """
+            Raises:
+                DuplicateParameterError
+            """
+            param_map = {}
+            for param in source.parameters:
+                key = ParamKey(name=param.name, location=param.in_)
+                if key in param_map:
+                    raise DuplicateParameterError(source, param)
+                param_map[key] = param
+            return param_map
+
+        def get_security_schemes_for_operation(
+            operation: Operation,
+        ) -> Set[FrozenSet[SecurityScheme]]:
+            """
+            outer set are the alternative security options for the operation
+            inner set are security schemes required together by this option
+
+            Raises:
+                InvalidSecuritySchemeError
+            """
+            # eliminate empty requirements dicts
+            # (they are not prohibited by OpenAPI spec but are not meaningful)
+            security_requirements = filter(
+                lambda req: bool(req),
+                (
+                    operation.security
+                    if operation.security is not None
+                    else doc.security
+                ),
+            )
+            if doc.components:
+                scheme_defs = doc.components.securitySchemes
+            else:
+                scheme_defs = {}
+            try:
+                return set(
+                    frozenset(scheme_defs[name] for name in requirement.keys())
+                    for requirement in security_requirements
+                )
+            except KeyError as e:
+                raise InvalidSecuritySchemeError(
+                    e.args[0], operation,  # scheme name
+                ) from e
+
         for path, path_item in doc.paths.items():
-            for method in HTTP_METHODS:
-                operation = getattr(path_item, method)
+            for method in HttpMethod:
+                operation = getattr(path_item, method.value)
                 if operation is not None:
                     node_key = NodeKey(doc_uri=start_uri, path=path, method=method)
+                    parameters = get_parameters(path_item)
+                    parameters.update(get_parameters(operation))
                     self.graph.add_node(
                         node_key,
-                        security=(
-                            operation.security
-                            if operation.security is not None
-                            else doc.security
+                        detail=OperationDetail(
+                            path=path,
+                            method=method,
+                            summary=operation.summary,
+                            description=operation.description,
+                            parameters=parameters,
+                            requestBody=operation.requestBody,
+                            security_schemes=get_security_schemes_for_operation(
+                                operation
+                            ),
                         ),
                     )
 

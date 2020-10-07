@@ -28,7 +28,7 @@ This is an extension to the `Link Object`_.
 ================================  =================================  ===========
 Field Name                        Type                               Description
 ================================  =================================  ===========
-x-apigraph-requestBodyParameters  Map[{JSON Pointer}, {expression}]  The keys are `JSON Pointers`_ identifying locations in the target request body. The values are `runtime expressions`_ to extract values from the source Operation.
+x-apigraph-requestBodyParameters  Map[{JSON Pointer}, {expression}]  The keys are `JSON Pointers`_ identifying locations in the target request body. The values are `runtime expressions`_ to extract values from the source Operation. ``x-apigraph-requestBodyParameters`` is mutually exclusive of ``requestBody``.
 ================================  =================================  ===========
 
 **Example**
@@ -122,10 +122,10 @@ operationRef           ``string``                         A `JSON Reference`_ id
 operationId            ``string``                         Name identifying a specific Operation in the current document. **One of** ``responseRef`` or ``operationRef`` or ``operationId`` is **REQUIRED**.
 response               ``string``                         Name identifying to a specific response in the otherwise specified Operation. **REQUIRED** if either ``operationRef`` or ``operationId`` are used and mutally exclusive of ``responseRef`` field.
 parameters             Map[``string``, {expression}]      A mapping of parameter names (from the backlink's parent operation) to `runtime expressions`_ to extract a value from the upstream Response which is the target of this backlink.
-requestBodyParameters  Map[{JSON Pointer}, {expression}]  A mapping of `JSON Pointers`_ (identifying values in the backlink's parent Operation's request body) to `runtime expressions`_ to extract a value from the upstream Response which is the target of this backlink.
-requestBody            {expression}                       A `runtime expression`_ to extract a value from the upstream Response it and use as the request body of the current Operation.
+requestBodyParameters  Map[{JSON Pointer}, {expression}]  A mapping of `JSON Pointers`_ (identifying values in the backlink's parent Operation's request body) to `runtime expressions`_ to extract a value from the upstream Response which is the target of this backlink. ``requestBodyParameters`` is mutually exclusive of ``requestBody``.
+requestBody            {expression}                       A `runtime expression`_ to extract a value from the upstream Response it and use as the request body of the current Operation. ``requestBody`` is mutually exclusive of ``requestBodyParameters``.
 description            ``string``                         A description of the link. `CommonMark syntax`_ MAY be used for rich text representation.
-server                 `Server Object`_                   A server object to be used by the target operation.
+server                 `Server Object`_                   A server object to be used by the target operation (the one this backlink is defined on).
 =====================  =================================  ===========
 
 Most fields are similar to their counterparts in the `Link Object`_.
