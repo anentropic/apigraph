@@ -806,3 +806,101 @@ def test_security_resolution():
         ),
     ]
     assert sorted([node for node in apigraph.graph.nodes(data=True)]) == expected_nodes
+
+
+def test_parameter_merging():
+    """
+    OpenAPI allows to specify parameters at the PathItem level which apply
+    to all Operations under that path.
+
+    Operation parameters can override a PathItem param of the same name, but
+    empty param list of operation does not remove path params.
+
+    Use of a list rather than map structure means the yaml could contain
+    duplicate params in either location with no override intended.
+    "A unique parameter is defined by a combination of a name and location."
+    OpenAPI docs say:
+    > The list MUST NOT include duplicated parameters.
+    ...so we can expect this to be validated at the model level.
+    """
+    doc_uri = fixture_uri("parameters.yaml")
+
+    apigraph = APIGraph(doc_uri)
+    assert apigraph.docs.keys() == {doc_uri}
+
+    # sorted (abitrarily in path, method order for sake of test)
+    expected_nodes = [
+        (
+            NodeKey(doc_uri, "/2.0/users/{username}", HttpMethod.DELETE),
+            {
+                "detail": OperationDetail(
+                    path="/2.0/users/{username}",
+                    method=HttpMethod.DELETE,
+                    summary="",
+                    description="",
+                    parameters={
+                        ParamKey("username", In.PATH): Parameter(
+                            **{
+                                "name": "username",
+                                "in": In.PATH,
+                                "required": True,
+                                "schema": {"type": "string"},
+                            }
+                        ),
+                        # additional param of same name, different `in` location
+                        ParamKey("username", In.QUERY): Parameter(
+                            **{
+                                "name": "username",
+                                "in": In.QUERY,
+                                "required": False,
+                                "schema": {"type": "string"},
+                            }
+                        ),
+                        ParamKey("api-token", In.QUERY): Parameter(
+                            **{
+                                "name": "api-token",
+                                "in": In.QUERY,
+                                "required": True,  # overridden to true
+                                "schema": {"type": "string"},
+                            }
+                        ),
+                    },
+                    requestBody=None,
+                    security_schemes=set(),
+                )
+            },
+        ),
+        (
+            NodeKey(doc_uri, "/2.0/users/{username}", HttpMethod.GET),
+            {
+                "detail": OperationDetail(
+                    path="/2.0/users/{username}",
+                    method=HttpMethod.GET,
+                    summary="",
+                    description="",
+                    parameters={
+                        # only has params inherited from PathItem
+                        ParamKey("username", In.PATH): Parameter(
+                            **{
+                                "name": "username",
+                                "in": In.PATH,
+                                "required": True,
+                                "schema": {"type": "string"},
+                            }
+                        ),
+                        ParamKey("api-token", In.QUERY): Parameter(
+                            **{
+                                "name": "api-token",
+                                "in": In.QUERY,
+                                "required": False,
+                                "schema": {"type": "string"},
+                            }
+                        ),
+                    },
+                    requestBody=None,
+                    security_schemes=set(),
+                )
+            },
+        ),
+    ]
+    assert sorted([node for node in apigraph.graph.nodes(data=True)]) == expected_nodes

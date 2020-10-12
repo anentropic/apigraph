@@ -46,10 +46,6 @@ class CircularDependencyError(InvalidDocumentError):
     pass
 
 
-class DuplicateParameterError(InvalidDocumentError):
-    pass
-
-
 class InvalidSecuritySchemeError(InvalidDocumentError):
     pass
 
@@ -286,16 +282,13 @@ class APIGraph:
             source: Union[PathItem, Operation]
         ) -> Dict[ParamKey, Parameter]:
             """
-            Raises:
-                DuplicateParameterError
+            NOTE:
+            we expect duplicate keys to have been rejected by model validation
             """
-            param_map = {}
-            for param in source.parameters:
-                key = ParamKey(name=param.name, location=param.in_)
-                if key in param_map:
-                    raise DuplicateParameterError(source, param)
-                param_map[key] = param
-            return param_map
+            return {
+                ParamKey(name=param.name, location=param.in_): param
+                for param in source.parameters
+            }
 
         def get_security_schemes_for_operation(
             operation: Operation,
