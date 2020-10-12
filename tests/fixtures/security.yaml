@@ -108,7 +108,7 @@ components:
   securitySchemes:
     apiKey:
       type: apiKey
-      name: api_key
+      name: api_key  # name of the header, query or cookie parameter
       in: header
     httpBearer:
       type: http

@@ -2,7 +2,7 @@ import pytest
 from openapi_orm.models import In, Parameter, RequestBody
 from pydantic import ValidationError
 
-from apigraph.graph import APIGraph, DuplicateOperationId
+from apigraph.graph import APIGraph, DuplicateOperationId, InvalidSecuritySchemeError
 from apigraph.types import (
     HttpMethod,
     LinkDetail,
@@ -654,6 +654,8 @@ def test_backlinks_via_components_ref():
         ("invalid-backlink-operationid-no-response-identifier.yaml", ValidationError),
         ("invalid-backlink-operationref-no-response-identifier.yaml", ValidationError),
         ("invalid-backlink-no-operation-identifier.yaml", ValidationError),
+        ("invalid-security-scheme.yaml", InvalidSecuritySchemeError),
+        ("invalid-parameter.yaml", ValidationError),
     ],
 )
 def test_invalid(fixture, exception):
