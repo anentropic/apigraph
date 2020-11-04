@@ -1,0 +1,52 @@
+openapi: 3.0.0
+info: 
+  title: Security Schemes Test API
+  version: 1.0.0
+paths: 
+  /2.0/users:
+    post:
+      operationId: addUser
+      # override: invalid security scheme
+      security:
+        - notFound: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/user'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+components:
+  schemas: 
+    user:
+      type: object
+      properties: 
+        username: 
+          type: string
+        uuid: 
+          type: string
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      name: api_key
+      in: header
+    httpBearer:
+      type: http
+      scheme: bearer
+    OAuth2Password:
+      type: oauth2
+      description: See https://dp_oauth2.schemarepo.com
+      flows: 
+        password: 
+          tokenUrl: https://api.depop.com/oauth2/access_token/
+          scopes: 
+            read: Default scope for everything
+security:
+# oneOf is required by default for all operations
+- httpBearer: []
+- OAuth2Password:
+  - read

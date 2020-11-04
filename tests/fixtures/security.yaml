@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info: 
-  title: Security Schemas Test API
+  title: Security Schemes Test API
   version: 1.0.0
 paths: 
   /2.0/users:
@@ -44,7 +44,7 @@ paths:
   /2.0/users/{username}: 
     get: 
       operationId: getUserByName
-      # no security override, either httpBearer or oAuth2Password accepted
+      # no security override, either httpBearer or OAuth2Password accepted
       parameters: 
       - name: username
         in: path
@@ -108,12 +108,12 @@ components:
   securitySchemes:
     apiKey:
       type: apiKey
-      name: api_key
+      name: api_key  # name of the header, query or cookie parameter
       in: header
     httpBearer:
       type: http
       scheme: bearer
-    oAuth2Password:
+    OAuth2Password:
       type: oauth2
       description: See https://dp_oauth2.schemarepo.com
       flows: 
@@ -124,5 +124,5 @@ components:
 security:
 # oneOf is required by default for all operations
 - httpBearer: []
-- oAuth2Password:
+- OAuth2Password:
   - read

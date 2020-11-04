@@ -1,0 +1,61 @@
+openapi: 3.0.0
+info: 
+  title: Parameter Merging Test API
+  version: 1.0.0
+paths: 
+  /2.0/users/{username}: 
+    parameters:
+    - name: username
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: api-token
+      in: query
+      required: false
+      schema:
+        type: string
+    get: 
+      operationId: getUserByName
+      # no security override, either httpBearer or OAuth2Password accepted
+      responses: 
+        '200':
+          description: The User
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/user'
+    delete:
+      operationId: deleteUser
+      parameters:
+      # parameter names do not have to be unique
+      # (name, in) pair must be unique though
+      # here we supplement the (username, path) param from `/2.0/users/{username}`
+      # with an additional (username, query) param
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      # here we override the (api-token, query) param from `/2.0/users/{username}`
+      # and make it required
+      - name: api-token
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+components:
+  schemas: 
+    user:
+      type: object
+      properties: 
+        username: 
+          type: string
+        uuid: 
+          type: string
