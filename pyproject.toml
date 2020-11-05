@@ -16,6 +16,8 @@ pydantic = "^1.5.1"
 json-spec = "^0.10.1"
 networkx = "^2.5"
 email-validator = "^1.1.1"
+sphinx = {version = "^3.1.1", optional = true}
+sphinx-autodoc-typehints ={version = "^1.11.1", optional = true}
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4"
@@ -27,10 +29,13 @@ mypy = "^0.780"
 pytest-httpx = "^0.4.0"
 black = "^19.10b0"
 isort = "^4.3.21"
-sphinx = "^3.1.1"
 sphinx-reload = "^0.2.0"
-# NOTE: docs deps have to be copied to docs/requirements.txt for readthedocs.io build
-sphinx-autodoc-typehints = "^1.11.1"
+
+[tool.poetry.extras]
+docs = [
+	"sphinx",
+	"sphinx-autodoc-typehints"
+]
 
 [tool.black]
 verbose = true

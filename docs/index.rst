@@ -11,6 +11,7 @@ Apigraph
    :caption: Contents:
 
    reference/index
+   api-docs/modules
 
 
 Introduction
