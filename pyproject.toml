@@ -5,7 +5,7 @@ description = ""
 authors = ["Anentropic <ego@anentropic.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 PyYAML = "^5.3.1"
 toml = "^0.10.1"
 jsonref = "^0.2"

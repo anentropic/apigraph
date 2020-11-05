@@ -2,6 +2,7 @@ from enum import Enum, auto
 from typing import (
     Any,
     Dict,
+    Final,
     FrozenSet,
     NamedTuple,
     Optional,
@@ -12,7 +13,6 @@ from typing import (
 )
 
 from openapi_orm.models import In, Parameter, RequestBody, SecurityScheme
-from typing_extensions import Final
 
 
 class NotSet(Enum):
