@@ -132,5 +132,4 @@ dmypy.json
 .pytype/
 
 .apigraph/
-openapi_orm/
 junk/
