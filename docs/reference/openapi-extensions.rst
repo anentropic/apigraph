@@ -6,9 +6,9 @@ Extensions to OpenAPI
 
 OpenAPI v3.0 provides only rudimentary support for `defining links`_ between documents. Specifically you can define a forward-pointing link which can extract values from the origin operation (e.g. from the request querystring, or response body) and pass them as request parameters to the destination operation.
 
-For **Apigraph** we want to be able to *completely specify* the dependency relationship between API endpoints, across multiple interconnected APIs. Additionally, and importantly, we want to be able to take a *leaf* in the graph and trace back up its branches to the root request(s). In other words to extract all the prerequsites for any request.
+For **Apigraph** we want to be able to *completely specify* the dependency relationship between API endpoints, across multiple interconnected APIs. Additionally, and importantly, we want to be able to take a *leaf* in the graph and trace back up its branches to the root request(s). In other words to extract all the prerequisites for any request.
 
-For our use case we encountered three problems with OpenAPI 3.0 Links specification:
+For our use case we encountered three problems with OpenAPI 3.0 Links specification, which we have addressed by defining extension properties, as allowed by the OpenAPI spec. The issues that we ran into are:
 
 1. There is no way to use extracted values in the destination operation's request body, except as the *whole* ``requestBody``. For example you cannot take a value from the response body and use it as a *field* in the request body of the downstream request. This is due to limitations in the definition of `request parameters`_ - they can only address locations like the querystring or headers. We are not the first to notice this problem, there is an `open issue here`_ where we have proposed our extension format.
 2. The current forward-pointing link structure means that origin operations need to know of, and specify, all of their downstream dependents. Realistically that is only suited to the same-document use case. If you imagine the scenario of an organisation using microservices, where each service is managed by a different team, then you will find it inconvenient to define links in this way. It means you have to rely on a different team to specify *your* dependency requirement in the OpenAPI doc *they* are responsible for. In the case where your API has a dependency on a 3rd-party API then it becomes impossible. Instead we propose `an alternative backward-pointing link specification`_ ("backlinks") that allows downstream services to fully specify their upstream dependencies.
@@ -57,7 +57,7 @@ Under the Link Object we have our extension field ``x-apigraph-requestBodyParame
 
 The key of the parameter ``/foo`` is a JSON Pointer which selects a single field location in the link target's request body.
 
-The value of the parameter ``$response.body#/foo`` is a *runtime expression* which selects a value from the link source, exactly as used elsewhere in the OpenAPI spec - the portion after the ``#`` is also a JSON Pointer, selecting the value ``/foo`` from the response body of the source request.
+The value of the parameter ``$response.body#/foo`` is a `runtime expression`_ which selects a value from the link source, exactly as used elsewhere in the OpenAPI spec - the portion after the ``#`` is also a JSON Pointer, selecting the value ``/foo`` from the response body of the source request.
 
 
 ``x-apigraph-backlinks`` (Operation)
@@ -247,7 +247,7 @@ Here there are two chains; ``default`` and ``v1``.
 
 This highlights one use-case for named link chains - in a versioned API you will have redundant links to any un-versioned parts of the API (or to other APIs which are on a different versioning schedule).
 
-In Apigraph we want to be able to say, for the ``GET /repositories/{username}`` operation, *"give me all the prerequisite operations in the ``v1`` chain for this endpoint"*.
+In Apigraph we want to be able to say, for the ``GET /repositories/{username}`` operation, *"give me all the prerequisite operations in the* ``v1`` *chain for this endpoint"*.
 
 .. highlights::
     By default, "anonymous" links and backlinks (from the ``null`` chain) will also be included in any named chain. This allows the chain to traverse documents which have not been explicitly marked up with the Apigraph chainId extension. It also allows to use anonymous links where otherwise multiple identical links would need to be specified for each chainId.
@@ -365,9 +365,11 @@ Here we link ``/2.0/users/{username} --> /2.0/repositories/{username}`` and we s
 
 The ``response.body`` and the operation's ``parameters`` both have a schema, so there is a *type-checking* that can be performed here to ensure that the type of the source value is compatible with that of the target parameter. In this example both are values have ``string`` type and it would type-check successfully.
 
+In Apigraph we would say this this link is *singular* rather than *multiple*.
+
 It's not clear whether OpenAPI mandates any specific behaviour from validators. We can imagine them either strictly type-checking based on the schemas or doing no type-checking at all - in that case a type mismatch could simply mean that the client is expected to coerce the extracted value to the type of the parameter before making a request.
 
-In Apigraph we take the type-checking approach and will expect the types to match strictly, with one exception where we make a semantic interpretation.
+In Apigraph we take the type-checking approach and will expect the types to match strictly, with the exception of "link multiplicity", where we make the semantic interpretation described below.
 
 Consider this example:
 
@@ -457,7 +459,7 @@ We can see the types in this example do not match - the ``$response.body#/id`` s
 
 For this example, Apigraph will understand the link or backlink as having *multiplicity* or, in other words, that the prerequisite request should be made multiple times and the values from each collated into an array for use in a single downstream parameter target.
 
-Apigraph will respect the quantifiers such as ``minItems: 1`` and ``maxItems: 255`` when repeating the prerequisite requests, which can be made in parallel.
+Apigraph will respect the quantifiers of the target array schema, like ``minItems: 1`` and ``maxItems: 255``, when repeating the prerequisite requests, which can be made in parallel.
 
 
 
